@@ -1,0 +1,9 @@
+# visual studio settings
+.vs/
+# interim build files
+*/obj/
+# subdirectories of /bin/... satellite assemblies for various localized resources
+*/bin/Debug/netcoreapp2.1/*/
+# see if it will work at runtime if we leave out the CodeAnalysis stuff
+# ... it should only be necessary for dynamic compilation, which we aren't doing.
+*/bin/Debug/netcoreapp2.1/*.CodeAnalysis.*

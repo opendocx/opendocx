@@ -59,3 +59,34 @@ typings/
 
 # next.js build output
 .next
+
+# Windows binaries
+*.exe
+*.pdb
+*.cache
+*.dll
+Thumbs.db
+
+# Visual Studio temp files
+*.suo
+*.user
+*conflicted*
+*FileListAbsolute.txt
+*Settings.settings
+**/[Bb]in/
+**/[Oo]bj/
+**/TestResults/
+
+# NuGet Packages
+*.nupkg
+**/packages/*
+*.lock.json
+*.nuget.props
+*.nuget.targets
+
+# Visual Studio
+.vs/
+
+# JetBrains
+.idea/
+_ReSharper.Caches/
