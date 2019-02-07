@@ -15,7 +15,16 @@
     "generate",
     "template"
   ],
-  "author": "Lowell Stewart <lowell@opendocx.com> (https://github.com/opendocx)",
+  "homepage": "https://github.com/opendocx/opendocx-node",
+  "repository": "github:opendocx/opendocx-node",
+  "bugs": {
+    "url": "https://github.com/opendocx/opendocx-node/issues",
+    "email": "lowell@opendocx.com"
+  },
+  "author": {
+    "name": "Lowell Stewart",
+    "email": "lowell@opendocx.com"
+  },
   "license": "MPL-2.0",
   "dependencies": {
     "angular-expressions": "^1.0.0",
