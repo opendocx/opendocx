@@ -1,32 +1,8 @@
-const path = require('path');
-const baseNetAppPath = path.join(__dirname, 'OpenDocx.Templater/bin/Debug/netcoreapp2.1');
-console.log('baseNetAppPath = ' + baseNetAppPath);
-process.env.EDGE_USE_CORECLR = '2.1';
-process.env.EDGE_APP_ROOT = baseNetAppPath;
-
-const util = require('util');
+const docxTemplater = require('./docx-templater');
+const textTemplater = require('./text-templater');
 const wu = require('wu');
 const expressions= require('angular-expressions');
 const format = require('date-fns/format');
-const edge = require('edge-js');
-
-const baseDll = path.join(baseNetAppPath, 'OpenDocx.Templater.dll');
-const preprocessFunc = edge.func(
-    {
-        assemblyFile: baseDll,
-        typeName: 'OpenDocx.Templater',
-        methodName: 'PreProcessAsync' // This must be Func<object,Task<object>>
-    }
-);
-const preprocess = util.promisify(preprocessFunc);
-const assembleFunc = edge.func(
-    {
-        assemblyFile: baseDll,
-        typeName: 'OpenDocx.Templater',
-        methodName: 'AssembleAsync' // This must be Func<object,Task<object>>
-    }
-);
-const assemble = util.promisify(assembleFunc);
 
 // define filters for angular-expressions
 expressions.filters.upper = function(input) {
@@ -53,7 +29,7 @@ expressions.filters.date = function(input, fmtStr) {
     return format(input, fmtStr);
 }
 expressions.filters.filt = function(input, predicateStr) {
-    console.log('filter called; input = ' + input.toString() + ', predicate = ' + predicateStr.toString())
+    //console.log('filter called; input = ' + input.toString() + ', predicate = ' + predicateStr.toString())
     if(!input || !Array.isArray(input) || !input.length) return input;
     const evaluator = expressions.compile(predicateStr);
     return input.filter(item => evaluator(item));
@@ -74,12 +50,17 @@ function isNonStringIterable(obj) {
 }
 
 exports.registerTemplate = async function(templateId) {
+    const payload = {templateFile: templateId};
+    let result;
+    if (templateId.slice(-5).toLowerCase()==".docx") {
+        result = await docxTemplater.prepareTemplate(payload);
+    }
+    else {
+        result = await textTemplater.prepareText(payload);
+    }
 
-    const result = await preprocess({
-        templateFile: templateId,
-    });
     //console.log(result);
-    console.log("JS: finished pre-processing template " + templateId);
+    //console.log("JS: finished pre-processing template " + templateId);
     return result;
 }
 
@@ -144,8 +125,6 @@ exports.assembleDocument = async function (templateId, data) {
                 result = evaluator(contextFrame.context);
             } while (result == null && (contextFrame = contextFrame.parent));
         }
-        if (result == null) // unanswered
-            result = '[' + expr + ']';
         return result;
     }
 
@@ -153,9 +132,11 @@ exports.assembleDocument = async function (templateId, data) {
         templateFile: templateId,
         evaluateText: function (payload, callback) {
             // payload is {"contextId":"...", "expr":"..."}
-            console.log("JS: evaluateText called; payload = " + JSON.stringify(payload));
+            //console.log("JS: evaluateText called; payload = " + JSON.stringify(payload));
             let result = evaluateInContext(payload.expr, payload.contextId);
             // result is expected to always be a string, since this is always called to get text for insertion into a document
+            if (result == null) // unanswered
+                result = '[' + payload.expr + ']';
             switch(typeof result) {
                 case "number":
                 case "boolean":
@@ -164,12 +145,12 @@ exports.assembleDocument = async function (templateId, data) {
                     break;
             }
             const error = null; // set to an error, if one occurs
-            console.log("JS: evaluateText is returning " + JSON.stringify(result));
+            //console.log("JS: evaluateText is returning " + JSON.stringify(result));
             callback(error, result);
         },
         evaluateBool: function (payload, callback) {
             // payload is {"contextId":"...", "expr":"..."}
-            console.log("JS: evaluateBool called; payload = " + JSON.stringify(payload));
+            //console.log("JS: evaluateBool called; payload = " + JSON.stringify(payload));
             let value = evaluateInContext(payload.expr, payload.contextId);
             let result;
             let error;
@@ -177,12 +158,12 @@ exports.assembleDocument = async function (templateId, data) {
                 result = (value.length > 0);
             else
                 result = Boolean(value);
-            console.log("JS: evaluateBlock is returning " + JSON.stringify(value));
+            //console.log("JS: evaluateBool is returning " + JSON.stringify(result));
             callback(error, result);
         },
         evaluateList: function(payload, callback) {
             // payload is {"contextId":"...", "expr":"..."}
-            console.log("JS: evaluateList called; payload = " + JSON.stringify(payload));
+            //console.log("JS: evaluateList called; payload = " + JSON.stringify(payload));
             let value = evaluateInContext(payload.expr, payload.contextId);
             let result; // expected to always be an array of contextIds
             let error; // set to an error, if one occurs
@@ -192,11 +173,11 @@ exports.assembleDocument = async function (templateId, data) {
             else {
                 error = `The selector '${payload.expr}' did not produce an iterable.`;
             }
-            console.log("JS: evaluateList is returning " + JSON.stringify(result));
+            //console.log("JS: evaluateList is returning " + JSON.stringify(result));
             callback(error, result);
         },
         releaseContext: function (contextId, callback) {
-            console.log(`JS: releaseContext called on context '${contextId}'`);
+            //console.log(`JS: releaseContext called on context '${contextId}'`);
             let error;
             let removed = false;
             if (contextId === '') {
@@ -209,7 +190,7 @@ exports.assembleDocument = async function (templateId, data) {
                     removed = false;
                 }
             }
-            console.log(`JS: releaseContext returning ${removed.toString()}.`);
+            //console.log(`JS: releaseContext returning ${removed.toString()}.`);
             callback(error, removed);
         },
     };
@@ -225,8 +206,12 @@ exports.assembleDocument = async function (templateId, data) {
         }
     };
 
-    const result = await assemble(options);
-    //console.log(result);
-    console.log("JS: finished assembling template " + templateId);
+    let result;
+    if (templateId.slice(-5).toLowerCase()==".docx") {
+        result = await docxTemplater.assembleDocument(options);
+    }
+    else {
+        result = await textTemplater.assembleText(options);
+    }
     return result;
 };
