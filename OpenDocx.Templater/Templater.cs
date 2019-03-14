@@ -31,7 +31,6 @@ namespace OpenDocx
         public async Task<object> AssembleAsync(dynamic input)
         {
             Console.WriteLine("DN: OpenDocx.Templater.AssembleAsync invoked");
-            //await Task.Yield();
             var documentFile = (string)input.documentFile;
             var templateFile = (string)input.templateFile;
             var xmlData = new StringReader((string)input.xmlData);
@@ -128,35 +127,12 @@ namespace OpenDocx
             if (RevisionAccepter.HasTrackedRevisions(wordDoc))
                 throw new FieldParseException("Invalid template - contains tracked revisions");
 
-            await Task.Yield(); // force asynchrony (for now)
             SimplifyTemplateMarkup(wordDoc);
 
             var te = new TemplateError();
             var partTasks = wordDoc.ContentParts().Select(part => PrepareTemplatePartAsync(fieldParser, xm, te, part));
             await Task.WhenAll(partTasks);
             return te.HasError;
-        }
-
-        private static XElement PrepareTemplatePart(IFieldParser parser, TemplateError te, XElement xDocRoot)
-        {
-            xDocRoot = RemoveGoBackBookmarks(xDocRoot);
-
-            // content controls in cells can surround the W.tc element, so transform so that such content controls are within the cell content
-            xDocRoot = (XElement)NormalizeContentControlsInCells(xDocRoot);
-
-            xDocRoot = (XElement)ParseFields(xDocRoot, parser, te);
-
-            // Repeat, EndRepeat, Conditional, EndConditional are allowed at run level, but only if there is a matching pair
-            // if there is only one Repeat, EndRepeat, Conditional, EndConditional, then move to block level.
-            // if there is a matching set, then is OK.
-            xDocRoot = (XElement)ForceBlockLevelAsAppropriate(xDocRoot, te);
-
-            NormalizeRepeatAndConditional(xDocRoot, te);
-
-            // any EndRepeat, EndConditional that remain are orphans, so replace with an error
-            ProcessOrphanEndRepeatEndConditional(xDocRoot, te);
-
-            return xDocRoot;
         }
 
         private static readonly object s_partLock = new object();
@@ -193,8 +169,6 @@ namespace OpenDocx
                 part.PutXDocument();
             }
         }
-
-
 
         private static XElement RemoveGoBackBookmarks(XElement xElement)
         {
@@ -249,129 +223,6 @@ namespace OpenDocx
 
             public static readonly XName Expr = "expr";
             public static readonly XName Depth = "depth";
-        }
-
-        private static object ParseFields(XNode node, IFieldParser parser, TemplateError te)
-        {
-            XElement element = node as XElement;
-            if (element != null)
-            {
-                if (element.Name == W.sdt)
-                {
-                    var alias = (string)element.Elements(W.sdtPr).Elements(W.alias).Attributes(W.val).FirstOrDefault();
-                    if (alias == null || alias == "")
-                    {
-                        var ccContents = element
-                            .DescendantsTrimmed(W.txbxContent)
-                            .Where(e => e.Name == W.t)
-                            .Select(t => (string)t)
-                            .StringConcatenate()
-                            .Trim()
-                            .Replace('“', '"')
-                            .Replace('”', '"');
-                        if (ccContents.StartsWith(parser.DelimiterOpen))
-                        {
-                            XElement xml = TransformContentToMetadata(te, ccContents, parser);
-                            if (xml.Name == W.p || xml.Name == W.r)  // this means there was an error processing the XML.
-                            {
-                                if (element.Parent.Name == W.p)
-                                    return xml.Elements(W.r);
-                                return xml;
-                            }
-                            xml.Add(element.Elements(W.sdtContent).Elements());
-                            return xml;
-                        }
-                        return new XElement(element.Name,
-                            element.Attributes(),
-                            element.Nodes().Select(n => ParseFields(n, parser, te)));
-                    }
-                    return new XElement(element.Name,
-                        element.Attributes(),
-                        element.Nodes().Select(n => ParseFields(n, parser, te)));
-                }
-                if (element.Name == W.p)
-                {
-                    var paraContents = element
-                        .DescendantsTrimmed(W.txbxContent)
-                        .Where(e => e.Name == W.t)
-                        .Select(t => (string)t)
-                        .StringConcatenate()
-                        .Trim();
-                    int occurances = paraContents.Select((c, i) => paraContents.Substring(i)).Count(sub => sub.StartsWith(parser.EmbedOpen));
-                    if (paraContents.StartsWith(parser.EmbedOpen) && paraContents.EndsWith(parser.EmbedClose) && occurances == 1)
-                    {
-                        var content = paraContents.Substring(parser.EmbedOpen.Length, paraContents.Length - parser.EmbedOpen.Length - parser.EmbedClose.Length).Trim();
-                        XElement xml = TransformContentToMetadata(te, content, parser);
-                        if (xml.Name == W.p || xml.Name == W.r)
-                            return xml;
-                        xml.Add(element);
-                        return xml;
-                    }
-                    if (paraContents.Contains(parser.EmbedOpen))
-                    {
-                        List<RunReplacementInfo> runReplacementInfo = new List<RunReplacementInfo>();
-                        var thisGuid = Guid.NewGuid().ToString();
-                        var r = new Regex(Regex.Escape(parser.EmbedOpen) + ".*?" + Regex.Escape(parser.EmbedClose));
-                        XElement xml = null;
-                        OpenXmlRegex.Replace(new[] { element }, r, thisGuid, (para, match) =>
-                        {
-                            var matchString = match.Value.Trim();
-                            var content = matchString.Substring(
-                                    parser.EmbedOpen.Length,
-                                    matchString.Length - parser.EmbedOpen.Length - parser.EmbedClose.Length
-                                ).Trim().Replace('“', '"').Replace('”', '"');
-                            try
-                            {
-                                xml = parser.ParseField(content);
-                            }
-                            catch (FieldParseException e)
-                            {
-                                RunReplacementInfo rri = new RunReplacementInfo()
-                                {
-                                    Xml = null,
-                                    ParseExceptionMessage = "ParseException: " + e.Message,
-                                    SchemaValidationMessage = null,
-                                };
-                                runReplacementInfo.Add(rri);
-                                return true;
-                            }
-                            RunReplacementInfo rri2 = new RunReplacementInfo()
-                            {
-                                Xml = xml,
-                                ParseExceptionMessage = null,
-                                SchemaValidationMessage = null,
-                            };
-                            runReplacementInfo.Add(rri2);
-                            return true;
-                        }, false);
-
-                        var newPara = new XElement(element);
-                        foreach (var rri in runReplacementInfo)
-                        {
-                            var runToReplace = newPara.Descendants(W.r).FirstOrDefault(rn => rn.Value == thisGuid && rn.Parent.Name != OD.Content);
-                            if (runToReplace == null)
-                                throw new FieldParseException("Internal error");
-                            if (rri.ParseExceptionMessage != null)
-                                runToReplace.ReplaceWith(CreateRunErrorMessage(rri.ParseExceptionMessage, te));
-                            else if (rri.SchemaValidationMessage != null)
-                                runToReplace.ReplaceWith(CreateRunErrorMessage(rri.SchemaValidationMessage, te));
-                            else
-                            {
-                                var newXml = new XElement(rri.Xml);
-                                newXml.Add(runToReplace);
-                                runToReplace.ReplaceWith(newXml);
-                            }
-                        }
-                        var coalescedParagraph = WordprocessingMLUtil.CoalesceAdjacentRunsWithIdenticalFormatting(newPara);
-                        return coalescedParagraph;
-                    }
-                }
-
-                return new XElement(element.Name,
-                    element.Attributes(),
-                    element.Nodes().Select(n => ParseFields(n, parser, te)));
-            }
-            return node;
         }
 
         private static async Task<object> ParseFieldsAsync(XNode node, IAsyncFieldParser parser, TemplateError te)
@@ -498,20 +349,6 @@ namespace OpenDocx
                     await Task.WhenAll(childNodeTasks));
             }
             return node;
-        }
-
-        private static XElement TransformContentToMetadata(TemplateError te, string content, IFieldParser parser)
-        {
-            XElement xml;
-            try
-            {
-                xml = parser.ParseField(content);
-            }
-            catch (FieldParseException e)
-            {
-                return CreateParaErrorMessage("ParseException: " + e.Message, te);
-            }
-            return xml;
         }
 
         private static async Task<XElement> TransformContentToMetadataAsync(TemplateError te, string content, IAsyncFieldParser parser)

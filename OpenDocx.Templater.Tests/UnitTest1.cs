@@ -22,7 +22,6 @@ namespace OpenDocxTemplater.Tests
         {
             string name = "SimpleWill.docx";
             //string data = "DA-Data.xml";
-            bool err = true;
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/");
             FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
             //FileInfo dataFile = new FileInfo(Path.Combine(sourceDir.FullName, data));
@@ -30,7 +29,6 @@ namespace OpenDocxTemplater.Tests
             WmlDocument wmlTemplate = new WmlDocument(templateDocx.FullName);
             //XElement xmldata = XElement.Load(dataFile.FullName);
 
-            bool returnedTemplateError;
             dynamic payload = new ExpandoObject();
             payload.templateFile = templateDocx.FullName;
             var templater = new Templater();
