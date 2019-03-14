@@ -1,217 +1,133 @@
 const docxTemplater = require('./docx-templater');
 const textTemplater = require('./text-templater');
-const wu = require('wu');
+const docxEvaluator = require('./docx-evaluator');
+const textEvaluator = require('./text-evaluator');
 const expressions= require('angular-expressions');
 const format = require('date-fns/format');
 
-// define filters for angular-expressions
+// define built-in filters (todo: more needed)
 expressions.filters.upper = function(input) {
-    // This condition should be used to make sure that if your input is undefined, your output will be undefined as well and will not throw an error
     if(!input) return input;
     return input.toUpperCase();
 }
-expressions.filters.listca = function(input) {
+expressions.filters.lower = function(input) {
     if(!input) return input;
-    let every = ", ", last = " and ", only2 = " and ";
-    const a = wu(input).toArray();
-    if (a.length > 2)
-        return a.slice(0, a.length - 1).join(every) + last + a[a.length-1];
-    if (a.length == 2)
-        return a[0] + only2 + a[1];
-    if (a.length == 1)
-        return a[0];
-    // else
-    return "";
+    return input.toLowerCase();
+}
+expressions.filters.initcap = function(input, forceLower = false) {
+    if(!input) return input;
+    if (forceLower) input = input.toLowerCase();
+    return input.charAt(0).toUpperCase() + input.slice(1);
+}
+expressions.filters.titlecaps = function(input, forceLower = false) {
+    if(!input) return input;
+    if (forceLower) input = input.toLowerCase();
+    return input.replace(/(^| )(\w)/g, s => s.toUpperCase());
 }
 expressions.filters.date = function(input, fmtStr) {
     // This condition should be used to make sure that if your input is undefined, your output will be undefined as well and will not throw an error
     if(!input) return input;
     return format(input, fmtStr);
 }
-expressions.filters.filt = function(input, predicateStr) {
-    //console.log('filter called; input = ' + input.toString() + ', predicate = ' + predicateStr.toString())
-    if(!input || !Array.isArray(input) || !input.length) return input;
-    const evaluator = expressions.compile(predicateStr);
-    return input.filter(item => evaluator(item));
-}
-expressions.filters.each = function(input, expr) {
-    if(!input || !Array.isArray(input) || !input.length) return input;
-    const evaluator = expressions.compile(expr);
-    const projected = input.map(item => evaluator(item));
-    return projected;
+expressions.filters.ordsuffix = function(input) {
+    if(!input) return input;
+    switch (input % 10) {
+        case 1: return "st";
+        case 2: return "nd";
+        case 3: return "rd";
+        default: return "th";
+    }
 }
 
-function isNonStringIterable(obj) {
-    // checks for null and undefined; also strings (though iterable) should not be iterable *contexts*
-    if (obj == null || typeof obj == 'string') {
-      return false;
-    }
-    return typeof obj[Symbol.iterator] === 'function';
+const compile = function(expr) {
+    if (expr == ".") expr = "this";
+    return expressions.compile(expr);
 }
 
-exports.registerTemplate = async function(templateId) {
-    const payload = {templateFile: templateId};
-    let result;
-    if (templateId.slice(-5).toLowerCase()==".docx") {
-        result = await docxTemplater.prepareTemplate(payload);
+var templateCache = {};
+var fieldCache;
+
+const parseField = function(fieldObj, callback) {
+    // fieldObj is an object with two properties:
+    //   type (string): the field type
+    //   expr (string): the expression within the field that wants to be parsed
+    let error = null;
+    let compiledExpr;
+    try {
+        compiledExpr = compile(fieldObj.expr);
+    } catch (err) {
+        error = err;
     }
-    else {
-        result = await textTemplater.prepareText(payload);
+    fieldCache[fieldObj.expr] = error ? error : compiledExpr;
+    if (callback) { // async
+        callback(error, compiledExpr);
+    } else { // synchronous
+        if (error) throw error;
+        return compiledExpr;
     }
-
-    //console.log(result);
-    //console.log("JS: finished pre-processing template " + templateId);
-    return result;
-}
-
-exports.assembleDocument = async function (templateId, data) {
-
-    function pushContexts(parentId, newId, contextIterable)
-    {
-        const result = [];
-        const parent = contextDict[parentId];
-        const baseId = parentId + '\ufe19' + newId;
-        let idx = 0;
-        for (const subContext of contextIterable) {
-            let iterId = baseId + '[' + idx.toString() + ']';
-            if (iterId in contextDict) {
-                contextDict[iterId].refCount++;
-            }
-            else {
-                contextDict[iterId] = {
-                    "context": subContext,
-                    "parent": parent,
-                    "index": idx,
-                    "refCount": 1,
-                };
-                parent.refCount++;
-            }
-            result.push(iterId);
-            idx++;
-        }
-        return result;
-    }
-
-    function popContext(contextId)
-    {
-        let result = false;
-        let contextFrame = contextDict[contextId];
-        if (contextFrame)
-        {
-            contextFrame.refCount--;
-            if (contextFrame.refCount == 0)
-            {
-                contextFrame.parent.refCount--;
-                delete contextFrame.context;
-                delete contextDict[contextId];
-                contextFrame = void 0;
-                result = true;
-            }
-            return result;
-        }
-        return `Context '${contextId}' not found and therefore not removed.`;
-    }
-
-    function evaluateInContext(expr, contextId)
-    {
-        let result;
-        let contextFrame = contextDict[contextId];
-        if (expr == ".") {
-            result = contextFrame.context;
-        }
-        else {
-            const evaluator = expressions.compile(expr);
-            do {
-                result = evaluator(contextFrame.context);
-            } while (result == null && (contextFrame = contextFrame.parent));
-        }
-        return result;
-    }
-
-    const options = {
-        templateFile: templateId,
-        evaluateText: function (payload, callback) {
-            // payload is {"contextId":"...", "expr":"..."}
-            //console.log("JS: evaluateText called; payload = " + JSON.stringify(payload));
-            let result = evaluateInContext(payload.expr, payload.contextId);
-            // result is expected to always be a string, since this is always called to get text for insertion into a document
-            if (result == null) // unanswered
-                result = '[' + payload.expr + ']';
-            switch(typeof result) {
-                case "number":
-                case "boolean":
-                case "object":
-                    result = result.toString();
-                    break;
-            }
-            const error = null; // set to an error, if one occurs
-            //console.log("JS: evaluateText is returning " + JSON.stringify(result));
-            callback(error, result);
-        },
-        evaluateBool: function (payload, callback) {
-            // payload is {"contextId":"...", "expr":"..."}
-            //console.log("JS: evaluateBool called; payload = " + JSON.stringify(payload));
-            let value = evaluateInContext(payload.expr, payload.contextId);
-            let result;
-            let error;
-            if (Array.isArray(value))
-                result = (value.length > 0);
-            else
-                result = Boolean(value);
-            //console.log("JS: evaluateBool is returning " + JSON.stringify(result));
-            callback(error, result);
-        },
-        evaluateList: function(payload, callback) {
-            // payload is {"contextId":"...", "expr":"..."}
-            //console.log("JS: evaluateList called; payload = " + JSON.stringify(payload));
-            let value = evaluateInContext(payload.expr, payload.contextId);
-            let result; // expected to always be an array of contextIds
-            let error; // set to an error, if one occurs
-            if (isNonStringIterable(value)) {
-                result = pushContexts(payload.contextId, payload.expr, value);
-            }
-            else {
-                error = `The selector '${payload.expr}' did not produce an iterable.`;
-            }
-            //console.log("JS: evaluateList is returning " + JSON.stringify(result));
-            callback(error, result);
-        },
-        releaseContext: function (contextId, callback) {
-            //console.log(`JS: releaseContext called on context '${contextId}'`);
-            let error;
-            let removed = false;
-            if (contextId === '') {
-                error = 'Unexpected request to release the root context.';
-            }
-            else {
-                removed = popContext(contextId);
-                if (typeof removed == "string") {
-                    error = removed;
-                    removed = false;
-                }
-            }
-            //console.log(`JS: releaseContext returning ${removed.toString()}.`);
-            callback(error, removed);
-        },
-    };
-
-    // contextDict is a dictionary/map from a "contextId" (a string that uniquely identifies an immutable data context)
-    // and a JS object that contains that data context.
-    // Each context is reference-counted, which allows new contexts to come into being arbitrarily, and stick around
-    // until they're no longer needed by the asynchronous, sometimes out-of-order assembly process.
-    const contextDict = {
-        "": {
-            "refCount": 1,
-            "context": data,
-        }
-    };
-
-    let result;
-    if (templateId.slice(-5).toLowerCase()==".docx") {
-        result = await docxTemplater.assembleDocument(options);
-    }
-    else {
-        result = await textTemplater.assembleText(options);
-    }
-    return result;
 };
+
+exports.compileText = function (template) {
+    fieldCache = {};
+    let result = textTemplater.parseTemplate(template, parseField);
+    templateCache[template] = fieldCache;
+    fieldCache = void 0;
+    return {
+        TemplateAST: result,
+        HasErrors: null
+    };
+}
+
+exports.compileDocx = async function(templatePath) {
+    fieldCache = {};
+    const options = {
+        templateFile: templatePath,
+        parseField: parseField
+    };
+    let result = await docxTemplater.compileTemplate(options);
+    templateCache[templatePath] = fieldCache;
+    fieldCache = void 0;
+    return result;
+}
+
+exports.assembleText = function (template, data) {
+    let compiled = textTemplater.parseTemplate(template); // this fetches result out of a cache if it's already been called
+    let result = textEvaluator.assembleText(data, compiled);
+    return result;
+}
+
+exports.assembleDocx = async function (templatePath, data, outputFile) {
+    // templatePath needs to have been compiled (previously) so the expected files will be on disk
+    //const result = await openDocx.compileDocx(templatePath);
+    const options = {
+        templateFile: templatePath + ".docxgen.docx",
+        xmlData: docxEvaluator.assembleXml(data, './' + templatePath + ".js"),
+        documentFile: outputFile,
+    };
+    let result = await docxTemplater.assembleDocument(options);
+    return result;
+}
+
+// exports.assembleDocument = async function (templateId, data) {
+
+
+//     // contextDict is a dictionary/map from a "contextId" (a string that uniquely identifies an immutable data context)
+//     // and a JS object that contains that data context.
+//     // Each context is reference-counted, which allows new contexts to come into being arbitrarily, and stick around
+//     // until they're no longer needed by the asynchronous, sometimes out-of-order assembly process.
+//     const contextDict = {
+//         "": {
+//             "refCount": 1,
+//             "context": data,
+//         }
+//     };
+
+//     let result;
+//     if (templateId.slice(-5).toLowerCase()==".docx") {
+//         result = await docxTemplater.assembleDocument(options);
+//     }
+//     else {
+//         result = await textTemplater.assembleText(options);
+//     }
+//     return result;
+// };

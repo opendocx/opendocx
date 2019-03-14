@@ -8,14 +8,14 @@ const util = require('util');
 const edge = require('edge-js');
 const baseDll = path.join(baseNetAppPath, 'OpenDocx.Templater.dll');
 
-const preprocessFunc = edge.func(
+const compileFunc = edge.func(
     {
         assemblyFile: baseDll,
         typeName: 'OpenDocx.Templater',
-        methodName: 'PreProcessAsync' // This must be Func<object,Task<object>>
+        methodName: 'CompileTemplateAsync' // This must be Func<object,Task<object>>
     }
 );
-exports.prepareTemplate = util.promisify(preprocessFunc);
+exports.compileTemplate = util.promisify(compileFunc);
 
 const assembleFunc = edge.func(
     {
