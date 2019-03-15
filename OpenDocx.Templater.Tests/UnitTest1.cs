@@ -18,7 +18,7 @@ namespace OpenDocxTemplater.Tests
     public class Tests
     {
         [Fact]
-        public async Task Test1()
+        public async Task CompileTemplate1()
         {
             string name = "SimpleWill.docx";
             //string data = "DA-Data.xml";

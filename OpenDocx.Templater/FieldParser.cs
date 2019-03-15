@@ -10,6 +10,8 @@ Email: lowell@opendocx.com
 ***************************************************************************/
 
 using System;
+using System.Dynamic;
+using System.Collections.Generic;
 using System.Xml.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -79,7 +81,10 @@ namespace OpenDocx
 
         public AsyncFieldParser(dynamic options)
         {
-            _parseField = (Func<object, Task<object>>)options.parseField;
+            if (options is ExpandoObject && ((IDictionary<string, object>)options).ContainsKey("parseField"))
+                _parseField = (Func<object, Task<object>>)options.parseField;
+            else
+                _parseField = null;
         }
 
         public AsyncFieldParser(AsyncFieldParser parent)

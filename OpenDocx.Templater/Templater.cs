@@ -29,18 +29,15 @@ namespace OpenDocx
     {
         public async Task<object> AssembleAsync(dynamic input)
         {
-            Console.WriteLine("DN: OpenDocx.Templater.AssembleAsync invoked");
+            await Task.Yield(); // assembly isn't async anymore, but calling from Node.js still wants it to be.
             var documentFile = (string)input.documentFile;
             var templateFile = (string)input.templateFile;
             var xmlData = new StringReader((string)input.xmlData);
             if (!File.Exists(templateFile))
                 throw new FileNotFoundException("Template not found in the expected location", templateFile);
             WmlDocument templateDoc = new WmlDocument(templateFile); // reads the template's bytes into memory
-            CancellationTokenSource source = new CancellationTokenSource();
-            Console.WriteLine("DN: reading xml");
-            XElement data = await XElement.LoadAsync(xmlData, LoadOptions.None, source.Token);
+            XElement data = XElement.Load(xmlData);
             bool templateError;
-            Console.WriteLine("DN: assembling");
             WmlDocument wmlAssembledDoc = DocumentAssembler.AssembleDocument(templateDoc, data, out templateError);
             if (templateError)
             {
@@ -50,10 +47,7 @@ namespace OpenDocx
             // todo: return the document somehow? instead of saving it.
 
             //// save the output (even in the case of error, since error messages are in the file)
-            Console.WriteLine("DN: saving");
             wmlAssembledDoc.SaveAs(documentFile);
-            Console.WriteLine("DN: OpenDocx.Templater.AssembleAsync wrote the result to " + documentFile);
-
             return new
             {
                 DocumentFile = documentFile,
