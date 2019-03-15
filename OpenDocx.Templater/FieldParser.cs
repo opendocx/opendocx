@@ -1,3 +1,14 @@
+/***************************************************************************
+
+Copyright (c) Lowell Stewart 2018-2019.
+Licensed under the Mozilla Public License. See LICENSE file in the project root for full license information.
+
+Published at https://github.com/opendocx/opendocx
+Developer: Lowell Stewart
+Email: lowell@opendocx.com
+
+***************************************************************************/
+
 using System;
 using System.Xml.Linq;
 using System.Text.RegularExpressions;
@@ -91,7 +102,7 @@ namespace OpenDocx
                 }
                 catch (Exception e)
                 {
-                    throw new EvaluationException("EvaluationException: " + e.Message, e);
+                    throw new FieldParseException("FieldParseException: " + e.Message, e);
                 }
             }
             return elem;

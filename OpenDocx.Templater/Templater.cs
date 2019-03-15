@@ -1,15 +1,14 @@
 /***************************************************************************
 
 Copyright (c) Lowell Stewart 2018-2019.
+Licensed under the Mozilla Public License. See LICENSE file in the project root for full license information.
 
-This code is licensed using the Microsoft Public License (Ms-PL).  The text of the license can be found here:
-
-http://www.microsoft.com/resources/sharedsource/licensingbasics/publiclicense.mspx
-
-Published at https://github.com/lowellstewart/opendocx
-
+Published at https://github.com/opendocx/opendocx
 Developer: Lowell Stewart
 Email: lowell@opendocx.com
+
+Portions Copyright (c) Microsoft. All rights reserved.
+Portions Copyright (c) Eric White Inc. All rights reserved.
 
 ***************************************************************************/
 
