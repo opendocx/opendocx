@@ -1,17 +1,15 @@
-﻿using OpenXmlPowerTools;
-
-namespace OpenDocx
+﻿namespace OpenDocx
 {
     public class CompileResult
     {
-        public WmlDocument CompiledTemplate { get; private set; }
-        public string ExtractedLogicFileName { get; }
-        public bool HasErrors { get; private set; }
+        public string DocxGenTemplate { get; }
+        public string ExtractedLogic { get; }
+        public bool HasErrors { get; }
 
-        internal CompileResult(WmlDocument compiledTemplate, string extractedLogicFileName, bool hasErrors)
+        internal CompileResult(string compiledTemplate, string extractedLogicFileName, bool hasErrors)
         {
-            CompiledTemplate = compiledTemplate;
-            ExtractedLogicFileName = extractedLogicFileName;
+            DocxGenTemplate = compiledTemplate;
+            ExtractedLogic = extractedLogicFileName;
             HasErrors = hasErrors;
         }
     }

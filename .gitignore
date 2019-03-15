@@ -1,7 +1,7 @@
 # generated files
 *.docx.js
 *.docx.FlatOpc.xml
-*.docx.docxgen.docx
+*.docxgen.docx
 *-assembled.docx
 *.asmdata.xml
 *.js.bak

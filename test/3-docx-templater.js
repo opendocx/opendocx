@@ -13,7 +13,7 @@ describe('3 - Pre-processing docx templates', function() {
     it('should create a js function that can execute against its contextHelper with an empty context', async function() {
         const template = "test/SimpleWill.docx";
         const result = await openDocx.compileDocx(template);
-        const str = evaluator.assembleXml({}, result.ExtractedLogicFile);
+        const str = evaluator.assembleXml({}, result.ExtractedLogic);
         assert.equal(str, '<?xml version="1.0"?><data><a/><A/><b/><B/><c/><C/><d/><D/><e/><E>false</E><h></h><l/><L/><m/><M/><n/><N/><o/><O/></data>');
     });
     it('previously generated js function should execute against its contextHelper with a fully populated smart context', async function() {
@@ -31,8 +31,8 @@ describe('3 - Pre-processing docx templates', function() {
         const template = "test/Lists.docx";
         const result = await openDocx.compileDocx(template);
         assert.equal(result.HasErrors, false);
-        const jsFile = result.ExtractedLogicFile;
-        //const compiledTemplate = result.CompiledTemplateFile;
+        const jsFile = result.ExtractedLogic;
+        //const compiledTemplate = result.DocxGenTemplate;
         const data = {Children:[{Name:'Greg',Birthdate:'1954-09-30'},{Name:'Marcia',Birthdate:'1956-08-05'},{Name:'Peter',Birthdate:'1957-11-07'},{Name:'Jan',Birthdate:'1958-04-29'},{Name:'Bobby',Birthdate:'1960-12-19'},{Name:'Cindy',Birthdate:'1961-08-14'}]};
         // simulate schema "smartening" to be performed by app engine, based on information in Types
         types._list_of(types.child, data.Children);

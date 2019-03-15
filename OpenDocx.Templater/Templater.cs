@@ -14,6 +14,7 @@ Portions Copyright (c) Eric White Inc. All rights reserved.
 
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
@@ -27,60 +28,63 @@ namespace OpenDocx
 {
     public class Templater
     {
-        public async Task<object> AssembleAsync(dynamic input)
+        public AssembleResult AssembleDocument(string templateFile, TextReader xmlData, string outputFile)
         {
-            await Task.Yield(); // assembly isn't async anymore, but calling from Node.js still wants it to be.
-            var documentFile = (string)input.documentFile;
-            var templateFile = (string)input.templateFile;
-            var xmlData = new StringReader((string)input.xmlData);
             if (!File.Exists(templateFile))
                 throw new FileNotFoundException("Template not found in the expected location", templateFile);
             WmlDocument templateDoc = new WmlDocument(templateFile); // reads the template's bytes into memory
-            XElement data = XElement.Load(xmlData);
-            bool templateError;
-            WmlDocument wmlAssembledDoc = DocumentAssembler.AssembleDocument(templateDoc, data, out templateError);
+            XElement data = xmlData.Peek() == -1 ? new XElement("none") : XElement.Load(xmlData);
+            WmlDocument wmlAssembledDoc = DocumentAssembler.AssembleDocument(templateDoc, data, out bool templateError);
             if (templateError)
             {
                 Console.WriteLine("Errors in template.");
                 Console.WriteLine("See the assembled document to inspect errors.");
             }
-            // todo: return the document somehow? instead of saving it.
-
             //// save the output (even in the case of error, since error messages are in the file)
-            wmlAssembledDoc.SaveAs(documentFile);
-            return new
+            wmlAssembledDoc.SaveAs(outputFile);
+            return new AssembleResult(outputFile, templateError);
+        }
+
+        // when calling from Node.js via Edge, we only get to pass one parameter
+        public object AssembleDocument(dynamic input)
+        {
+            using (var xmlData = new StringReader((string)input.xmlData))
             {
-                DocumentFile = documentFile,
-                HasErrors = templateError
-            };
+                return AssembleDocument((string)input.templateFile, xmlData, (string)input.documentFile);
+            }
+        }
+
+        // assembly is synchronous, but when calling from Node.js (via Edge) we may still need an async method
+        public async Task<object> AssembleDocumentAsync(dynamic input)
+        {
+            await Task.Yield();
+            return AssembleDocument(input);
+        }
+
+        public CompileResult CompileTemplate(string templateFileName)
+        {
+            var fieldParser = new AsyncFieldParser(); // no async callback specified
+            // because no async callback was specified, above, the entire method will execute synchronously.
+            return CompileTemplateAsync(templateFileName, fieldParser).GetAwaiter().GetResult();
         }
 
         public async Task<object> CompileTemplateAsync(dynamic input)
         {
-            //Console.WriteLine("DN: OpenDocx.Templater.CompileTemplateAsync invoked");
             var templateFile = (string)input.templateFile;
-            var fieldParser = new AsyncFieldParser(input);
-            WmlDocument templateDoc = new WmlDocument(templateFile); // just reads the template's bytes into memory (that's all), read-only
+            AsyncFieldParser fieldParser;
+            if (input is ExpandoObject && ((IDictionary<string, object>)input).ContainsKey("parseField"))
+                fieldParser = new AsyncFieldParser((Func<object, Task<object>>)input.parseField);
+            else
+                fieldParser = new AsyncFieldParser();
 
-            var result = await CompileTemplateAsync(templateDoc, templateFile, fieldParser);
-            if (result.HasErrors)
-            {
-                Console.WriteLine("Errors in template.");
-                Console.WriteLine("See {0} to determine the errors in the template.", result.CompiledTemplate.FileName);
-            }
-            // save the output (even in the case of error, since error messages are in the file)
-            result.CompiledTemplate.Save(); // write the in-memory copy out to disk
-
-            return new
-            {
-                CompiledTemplateFile = result.CompiledTemplate.FileName,
-                ExtractedLogicFile = result.ExtractedLogicFileName,
-                result.HasErrors
-            };
+            return await CompileTemplateAsync(templateFile, fieldParser);
         }
 
-        private static async Task<CompileResult> CompileTemplateAsync(WmlDocument templateDoc, string templateFileName, IAsyncFieldParser parser)
+        private static async Task<CompileResult> CompileTemplateAsync(string templateFileName, IAsyncFieldParser parser)
         {
+            string newDocxFilename = templateFileName + "gen.docx";
+            string jsFileName = templateFileName + ".js";
+            WmlDocument templateDoc = new WmlDocument(templateFileName); // just reads the template's bytes into memory (that's all), read-only
             WmlDocument preprocessedTemplate = null;
             bool templateError = false;
             byte[] byteArray = templateDoc.DocumentByteArray;
@@ -103,16 +107,24 @@ namespace OpenDocx
                     //}
                     //// end experimental
                 }
-                preprocessedTemplate = new WmlDocument(templateFileName + ".docxgen.docx", mem.ToArray());
+                preprocessedTemplate = new WmlDocument(newDocxFilename, mem.ToArray());
             }
-            string jsFileName = templateFileName + ".js";
+            // save the output (even in the case of error, since error messages are in the file)
+            preprocessedTemplate.Save();
+
             using (StreamWriter sw = File.CreateText(jsFileName))
             {
                 sw.Write(jsFunction);
                 sw.Close();
             }
 
-            return new CompileResult(preprocessedTemplate, jsFileName, templateError);
+            if (templateError)
+            {
+                Console.WriteLine("Errors in template.");
+                Console.WriteLine("See {0} to determine the errors in the template.", preprocessedTemplate.FileName);
+            }
+
+            return new CompileResult(preprocessedTemplate.FileName, jsFileName, templateError);
         }
 
         private static async Task<bool> PrepareTemplateAsync(WordprocessingDocument wordDoc, IAsyncFieldParser fieldParser, TranslationMetadata xm)
@@ -234,8 +246,8 @@ namespace OpenDocx
                             .Select(t => (string)t)
                             .StringConcatenate()
                             .Trim()
-                            .Replace('“', '"')
-                            .Replace('”', '"');
+                            .Replace('ï¿½', '"')
+                            .Replace('ï¿½', '"');
                         if (ccContents.StartsWith(parser.DelimiterOpen))
                         {
                             XElement xml = await TransformContentToMetadataAsync(te, ccContents, parser);
@@ -288,7 +300,7 @@ namespace OpenDocx
                             var content = matchString.Substring(
                                     parser.EmbedOpen.Length,
                                     matchString.Length - parser.EmbedOpen.Length - parser.EmbedClose.Length
-                                ).Trim().Replace('“', '"').Replace('”', '"');
+                                ).Trim().Replace('ï¿½', '"').Replace('ï¿½', '"');
                             try
                             {
                                 xml = parser.ParseField(content);

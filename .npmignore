@@ -4,14 +4,16 @@
 */obj/
 # subdirectories of /bin/... satellite assemblies for various localized resources
 */bin/Debug/netcoreapp2.1/*/
+*/bin/Debug/netstandard2.0/*/
 # see if it will work at runtime if we leave out the CodeAnalysis stuff
 # ... it should only be necessary for dynamic compilation, which we aren't doing.
 */bin/Debug/netcoreapp2.1/*.CodeAnalysis.*
+*/bin/Debug/netstandard2.0/*.CodeAnalysis.*
 
 # generated files
 *.docx.js
 *.docx.FlatOpc.xml
-*.docx.docxgen.docx
+*.docxgen.docx
 *-assembled.docx
 *.asmdata.xml
 *.js.bak

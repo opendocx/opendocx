@@ -18,21 +18,17 @@ namespace OpenDocxTemplater.Tests
     public class Tests
     {
         [Fact]
-        public async Task CompileTemplate1()
+        public void CompileTemplateSync()
         {
             string name = "SimpleWill.docx";
-            //string data = "DA-Data.xml";
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/");
             FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
-            //FileInfo dataFile = new FileInfo(Path.Combine(sourceDir.FullName, data));
 
-            WmlDocument wmlTemplate = new WmlDocument(templateDocx.FullName);
-            //XElement xmldata = XElement.Load(dataFile.FullName);
-
-            dynamic payload = new ExpandoObject();
-            payload.templateFile = templateDocx.FullName;
             var templater = new Templater();
-            await templater.CompileTemplateAsync(payload);
+            var compileResult = templater.CompileTemplate(templateDocx.FullName);
+            Assert.False(compileResult.HasErrors);
+            Assert.True(File.Exists(compileResult.DocxGenTemplate));
+            Assert.True(File.Exists(compileResult.ExtractedLogic));
 //            WmlDocument afterAssembling = DocumentAssembler.AssembleDocument(wmlTemplate, xmldata, out returnedTemplateError);
 //            var assembledDocx = new FileInfo(Path.Combine(TestUtil.TempDir.FullName, templateDocx.Name.Replace(".docx", "-processed-by-DocumentAssembler.docx")));
 //            afterAssembling.SaveAs(assembledDocx.FullName);

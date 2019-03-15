@@ -21,7 +21,7 @@ const assembleFunc = edge.func(
     {
         assemblyFile: baseDll,
         typeName: 'OpenDocx.Templater',
-        methodName: 'AssembleAsync' // This must be Func<object,Task<object>>
+        methodName: 'AssembleDocumentAsync' // This must be Func<object,Task<object>>
     }
 );
 exports.assembleDocument = util.promisify(assembleFunc);

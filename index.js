@@ -100,7 +100,7 @@ exports.assembleDocx = async function (templatePath, data, outputFile) {
     // templatePath needs to have been compiled (previously) so the expected files will be on disk
     //const result = await openDocx.compileDocx(templatePath);
     const options = {
-        templateFile: templatePath + ".docxgen.docx",
+        templateFile: templatePath + "gen.docx",
         xmlData: docxEvaluator.assembleXml(data, './' + templatePath + ".js"),
         documentFile: outputFile,
     };

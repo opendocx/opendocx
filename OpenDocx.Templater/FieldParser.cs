@@ -9,6 +9,20 @@ Email: lowell@opendocx.com
 
 ***************************************************************************/
 
+// comments on this file:
+// fields in an OpenDocx template contain two "parts"
+//    - the field type
+//    - (for many fields) an expression to be evaluated (against a data context) in order to assemble a document
+//
+// The ParseField method in this file parses the former -- field type -- so the template can be analyzed and structured.
+// It does NOT (directly) parse the expressions.
+//
+// The ParseFieldAsync method FIRST calls ParseField to parse the field structure, and THEN it calls out to Node.js
+// (via Edge.js) to allow each field to be parsed in that environment. However, if you instantiate ParseFieldAsync
+// WITHOUT providing a parseField callback, it will simply parse the field types syncrhonously (same as ParseField).
+// So basically, ParseFieldAsync will function either asynchronously or synchronously, depending on whether the calling
+// code provides a callback or not.
+
 using System;
 using System.Dynamic;
 using System.Collections.Generic;
@@ -79,12 +93,14 @@ namespace OpenDocx
     {
         private Func<object, Task<object>> _parseField;
 
-        public AsyncFieldParser(dynamic options)
+        public AsyncFieldParser()
         {
-            if (options is ExpandoObject && ((IDictionary<string, object>)options).ContainsKey("parseField"))
-                _parseField = (Func<object, Task<object>>)options.parseField;
-            else
-                _parseField = null;
+            _parseField = null;
+        }
+
+        public AsyncFieldParser(Func<object, Task<object>> parseFieldCallback)
+        {
+            _parseField = parseFieldCallback;
         }
 
         public AsyncFieldParser(AsyncFieldParser parent)
