@@ -107,27 +107,3 @@ exports.assembleDocx = async function (templatePath, data, outputFile) {
     let result = await docxTemplater.assembleDocument(options);
     return result;
 }
-
-// exports.assembleDocument = async function (templateId, data) {
-
-
-//     // contextDict is a dictionary/map from a "contextId" (a string that uniquely identifies an immutable data context)
-//     // and a JS object that contains that data context.
-//     // Each context is reference-counted, which allows new contexts to come into being arbitrarily, and stick around
-//     // until they're no longer needed by the asynchronous, sometimes out-of-order assembly process.
-//     const contextDict = {
-//         "": {
-//             "refCount": 1,
-//             "context": data,
-//         }
-//     };
-
-//     let result;
-//     if (templateId.slice(-5).toLowerCase()==".docx") {
-//         result = await docxTemplater.assembleDocument(options);
-//     }
-//     else {
-//         result = await textTemplater.assembleText(options);
-//     }
-//     return result;
-// };

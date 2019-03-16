@@ -52,7 +52,16 @@ namespace opendc
         private static void Assemble(string compiledTemplatePath, string documentPath)
         {
             var templater = new OpenDocx.Templater();
-            var result = templater.AssembleDocument(compiledTemplatePath, Console.In, documentPath);
+            AssembleResult result;
+            if (Console.IsInputRedirected)
+            {
+                result = templater.AssembleDocument(compiledTemplatePath, Console.In, documentPath);
+            }
+            else
+            {
+                Console.WriteLine("(no xml detected on STDIN; proceeding without data)");
+                result = templater.AssembleDocument(compiledTemplatePath, new StringReader(""), documentPath);
+            }
             Console.WriteLine("Document={0}", result.Document);
             Console.WriteLine("HasErrors={0}", result.HasErrors);
         }
