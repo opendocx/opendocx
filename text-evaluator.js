@@ -1,13 +1,13 @@
 'use strict';
 
 const expressions= require('angular-expressions');
-const Context = require('./context');
+const ContextStack = require('./context-stack');
 const OD = require('./fieldtypes');
 
 var contextStack;
 
 const assembleText = function (context, parsedTemplate) {
-    contextStack = new Context();
+    contextStack = new ContextStack();
     contextStack.pushObject('_top', context);
     let contextFrame = contextStack.peek();
     const text = parsedTemplate.map(contentItem => ContentReplacementTransform(contentItem, contextFrame)).join("");
@@ -73,7 +73,7 @@ function ContentReplacementTransform(contentItem, contextFrame)
                 }
                 const evaluator = compile(contentItem.expr); // these are cached so this should be fast
                 const value = evaluator(frame.context); // we need to make sure this is memoized to avoid unnecessary re-evaluation
-                bValue = Context.IsTruthy(value);
+                bValue = ContextStack.IsTruthy(value);
             } catch (err) {
                 return CreateContextErrorMessage("EvaluationException: " + err);
             }

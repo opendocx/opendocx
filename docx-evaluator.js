@@ -1,7 +1,7 @@
 'use strict';
 
 const expressions= require('angular-expressions');
-const Context = require('./context');
+const ContextStack = require('./context-stack');
 
 var xmlBuilder, contextStack;
 
@@ -12,7 +12,7 @@ const compile = function(expr) {
 
 const assembleXml = function (context, templateJsFile, joinstr = "") {
     xmlBuilder = ['<?xml version="1.0"?>'];
-    contextStack = new Context();
+    contextStack = new ContextStack();
     const extractedLogic = require('./' + templateJsFile);
     extractedLogic.evaluate(context, this);
     return xmlBuilder.join(joinstr);
@@ -61,7 +61,7 @@ const defineCondition = function (ident, expr, persist = true) {
     }
     const evaluator = compile(expr); // these are cached so this should be fast
     const value = evaluator(frame.context); // we need to make sure this is memoized to avoid unnecessary re-evaluation
-    const bValue = Context.IsTruthy(value);
+    const bValue = ContextStack.IsTruthy(value);
     if (persist) {
         xmlBuilder.push(`<${ident}>${bValue?'true':'false'}</${ident}>`);
     }

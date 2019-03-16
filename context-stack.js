@@ -1,6 +1,6 @@
 "use strict";
 
-class Context {
+class ContextStack {
     constructor () {
         this.stack = [];
     }
@@ -48,9 +48,9 @@ class Context {
 
     static IsTruthy(value) {
         let bValue;
-        if (value && Context.IsIterable(value)) {
+        if (value && ContextStack.IsIterable(value)) {
             // checking if a list is empty or not
-            if (!Context.IsArray(value)) {
+            if (!ContextStack.IsArray(value)) {
                 value = Array.from(value)
             }
             bValue = (value.length > 0) // for purposes of if fields in opendocx, we consider empty lists falsy! (unlike typical JavaScript, where all arrays are considered truthy)
@@ -72,7 +72,7 @@ class Context {
         return typeof obj[Symbol.iterator] === 'function'
     }
 }
-module.exports = Context;
+module.exports = ContextStack;
 
 const indices = (length) => new Array(length).fill(undefined).map((value, index) => index)
 
