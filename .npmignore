@@ -2,12 +2,14 @@
 .vs/
 # interim build files
 */obj/
+utility/*/bin/
+utility/*/obj/
 # subdirectories of /bin/... satellite assemblies for various localized resources
-*/bin/Debug/netcoreapp2.1/*/
+*/bin/Debug/netcoreapp2.0/*/
 */bin/Debug/netstandard2.0/*/
 # see if it will work at runtime if we leave out the CodeAnalysis stuff
 # ... it should only be necessary for dynamic compilation, which we aren't doing.
-*/bin/Debug/netcoreapp2.1/*.CodeAnalysis.*
+*/bin/Debug/netcoreapp2.0/*.CodeAnalysis.*
 */bin/Debug/netstandard2.0/*.CodeAnalysis.*
 
 # generated files
