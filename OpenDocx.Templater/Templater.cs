@@ -216,6 +216,23 @@ namespace OpenDocx
             return node;
         }
 
+        // this class must match (exactly) what's defined in OpenXmlPowerTools
+        private class PA
+        {
+            public static readonly XName Content = "Content";
+            public static readonly XName Table = "Table";
+            public static readonly XName Repeat = "Repeat";
+            public static readonly XName EndRepeat = "EndRepeat";
+            public static readonly XName Conditional = "Conditional";
+            public static readonly XName EndConditional = "EndConditional";
+
+            public static readonly XName Select = "Select";
+            public static readonly XName Optional = "Optional";
+            public static readonly XName Match = "Match";
+            public static readonly XName NotMatch = "NotMatch";
+            public static readonly XName Depth = "Depth";
+        }
+
         internal class OD
         {
             public static readonly XName Content = "Content";
@@ -585,8 +602,7 @@ namespace OpenDocx
                 RemoveFieldCodes = false,
                 RemoveLastRenderedPageBreak = false,
                 RemovePermissions = false,
-                RemoveProofingErrors = true,
-                RemoveSuppressProofing = false,
+                RemoveProof = true,
                 RemoveRsidInfo = true,
                 RemoveSmartTags = true,
                 RemoveSoftHyphens = false,
@@ -643,9 +659,9 @@ namespace OpenDocx
                 if (element.Name == OD.Content)
                 {
                     var selector = compiler.DefineProperty(element.Attribute(OD.Expr).Value);
-                    var text = "<" + DocumentAssembler.PA.Content + " "
-                        + DocumentAssembler.PA.Select + "=\"" + selector + "\" "
-                        + DocumentAssembler.PA.Optional + "=\"true\"/>";
+                    var text = "<" + PA.Content + " "
+                        + PA.Select + "=\"" + selector + "\" "
+                        + PA.Optional + "=\"true\"/>";
                     XElement ccc = null;
                     XElement para = element.Descendants(W.p).FirstOrDefault();
                     XElement run = element.Descendants(W.r).FirstOrDefault();
@@ -665,10 +681,10 @@ namespace OpenDocx
                 if (element.Name == OD.List)
                 {
                     var selector = compiler.BeginList(element.Attribute(OD.Expr).Value);
-                    var startText = "<" + DocumentAssembler.PA.Repeat + " "
-                        + DocumentAssembler.PA.Select + "=\"" + selector + "\" "
-                        + DocumentAssembler.PA.Optional + "=\"true\"/>";
-                    var endText = "<" + DocumentAssembler.PA.EndRepeat + "/>";
+                    var startText = "<" + PA.Repeat + " "
+                        + PA.Select + "=\"" + selector + "\" "
+                        + PA.Optional + "=\"true\"/>";
+                    var endText = "<" + PA.EndRepeat + "/>";
                     XElement para = element.Descendants(W.p).FirstOrDefault();
                     var repeatingContent = element
                         .Elements()
@@ -693,15 +709,15 @@ namespace OpenDocx
                 }
                 if (element.Name == OD.If || element.Name == OD.ElseIf || element.Name == OD.Else)
                 {
-                    var endText = "<" + DocumentAssembler.PA.EndConditional + "/>";
+                    var endText = "<" + PA.EndConditional + "/>";
                     XElement endElem = new XElement(W.r, new XElement(W.t, endText));
                     bool blockLevel = element.Descendants(W.p).FirstOrDefault() != null;
                     if (element.Name == OD.If)
                     {
                         var selector = compiler.BeginIf(element.Attribute(OD.Expr).Value);
-                        var startText = "<" + DocumentAssembler.PA.Conditional + " "
-                            + DocumentAssembler.PA.Select + "=\"" + selector + "\" "
-                            + DocumentAssembler.PA.Match + "=\"true\"/>";
+                        var startText = "<" + PA.Conditional + " "
+                            + PA.Select + "=\"" + selector + "\" "
+                            + PA.Match + "=\"true\"/>";
                         var content = element
                             .Elements()
                             .Select(e => ContentReplacementTransform(e, compiler, templateError))
@@ -725,13 +741,13 @@ namespace OpenDocx
                     if (element.Name == OD.ElseIf)
                     {
                         var selector = compiler.Else();
-                        var startElseText = "<" + DocumentAssembler.PA.Conditional + " "
-                            + DocumentAssembler.PA.Select + "=\"" + selector + "\" "
-                            + DocumentAssembler.PA.NotMatch + "=\"true\"/>"; // NotMatch instead of Match, represents "Else" branch
+                        var startElseText = "<" + PA.Conditional + " "
+                            + PA.Select + "=\"" + selector + "\" "
+                            + PA.NotMatch + "=\"true\"/>"; // NotMatch instead of Match, represents "Else" branch
                         selector = compiler.BeginIf(element.Attribute(OD.Expr).Value);
-                        var nestedIfText = "<" + DocumentAssembler.PA.Conditional + " "
-                            + DocumentAssembler.PA.Select + "=\"" + selector + "\" "
-                            + DocumentAssembler.PA.Match + "=\"true\"/>";
+                        var nestedIfText = "<" + PA.Conditional + " "
+                            + PA.Select + "=\"" + selector + "\" "
+                            + PA.Match + "=\"true\"/>";
                         var content = element
                             .Elements()
                             .Select(e => ContentReplacementTransform(e, compiler, templateError))
@@ -761,9 +777,9 @@ namespace OpenDocx
                     if (element.Name == OD.Else)
                     {
                         var selector = compiler.Else();
-                        var startElseText = "<" + DocumentAssembler.PA.Conditional + " "
-                            + DocumentAssembler.PA.Select + "=\"" + selector + "\" "
-                            + DocumentAssembler.PA.NotMatch + "=\"true\"/>"; // NotMatch instead of Match, represents "Else" branch
+                        var startElseText = "<" + PA.Conditional + " "
+                            + PA.Select + "=\"" + selector + "\" "
+                            + PA.NotMatch + "=\"true\"/>"; // NotMatch instead of Match, represents "Else" branch
 
                         var content = element
                             .Elements()
