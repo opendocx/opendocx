@@ -1,14 +1,8 @@
 'use strict';
 
-const expressions= require('angular-expressions');
-const ContextStack = require('./context-stack');
+const { ContextStack, compileField } = require('yatte');
 
 var xmlBuilder, contextStack;
-
-const compile = function(expr) {
-    if (expr == ".") expr = "this";
-    return expressions.compile(expr);
-}
 
 const assembleXml = function (context, templateJsFile, joinstr = "") {
     xmlBuilder = ['<?xml version="1.0"?>'];
@@ -40,7 +34,7 @@ const define = function (ident, expr) {
         throw `Internal error: cannot define a member on a ${frame.type} context`;
     }
 
-    const evaluator = compile(expr); // these are cached so this should be fast
+    const evaluator = compileField(expr); // these are cached so this should be fast
     let value = evaluator(frame.context); // we need to make sure this is memoized to avoid unnecessary re-evaluation
 
     if (value === null || typeof value === 'undefined') {
@@ -59,7 +53,7 @@ const defineCondition = function (ident, expr, persist = true) {
     if (frame.type != 'Object') {
         throw `Internal error: cannot define a condition on a ${frame.type} context`;
     }
-    const evaluator = compile(expr); // these are cached so this should be fast
+    const evaluator = compileField(expr); // these are cached so this should be fast
     const value = evaluator(frame.context); // we need to make sure this is memoized to avoid unnecessary re-evaluation
     const bValue = ContextStack.IsTruthy(value);
     if (persist) {
@@ -71,7 +65,7 @@ exports.defineCondition = defineCondition;
 
 const beginList = function (ident, expr) {
     const frame = contextStack.peek();
-    const evaluator = compile(expr); // these are cached so this should be fast
+    const evaluator = compileField(expr); // these are cached so this should be fast
     let iterable = evaluator(frame.context); // we need to make sure this is memoized to avoid unnecessary re-evaluation
     const indices = contextStack.pushList(ident, iterable);
     xmlBuilder.push(`<${ident}>`);

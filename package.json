@@ -1,6 +1,6 @@
 {
-  "name": "opendocx-node",
-  "version": "0.2.1-experimental",
+  "name": "opendocx",
+  "version": "0.2.2-alpha",
   "description": "OpenDocx document assembly for Node.js",
   "main": "index.js",
   "scripts": {
@@ -15,10 +15,10 @@
     "generate",
     "template"
   ],
-  "homepage": "https://github.com/opendocx/opendocx-node",
-  "repository": "github:opendocx/opendocx-node",
+  "homepage": "https://github.com/opendocx/opendocx",
+  "repository": "github:opendocx/opendocx",
   "bugs": {
-    "url": "https://github.com/opendocx/opendocx-node/issues",
+    "url": "https://github.com/opendocx/opendocx/issues",
     "email": "lowell@opendocx.com"
   },
   "author": {
@@ -31,7 +31,8 @@
     "date-fns": "^1.30.1",
     "edge-js": "^11.3.0",
     "path": "^0.12.7",
-    "util": "^0.11.1"
+    "util": "^0.11.1",
+    "yatte": "^1.0.5-alpha"
   },
   "devDependencies": {
     "mocha": "^5.2.0"
