@@ -8,11 +8,13 @@ namespace OpenDocx
     {
         public string TempTemplate { get; }
         public string ExtractedFields { get; }
+        public bool HasErrors { get; }
 
-        internal FieldExtractResult(string tempTemplate, string extractedFields)
+        internal FieldExtractResult(string tempTemplate, string extractedFields, bool hasErrors)
         {
             TempTemplate = tempTemplate;
             ExtractedFields = extractedFields;
+            HasErrors = hasErrors;
         }
     }
 }

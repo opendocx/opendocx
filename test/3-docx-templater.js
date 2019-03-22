@@ -3,53 +3,59 @@ const assert = require('assert');
 const fs = require('fs');
 const evaluator = require('../docx-evaluator');
 const { TestHelperTypes } = require('yatte');
+const testUtil = require('./test-utils');
 
-describe('3 - Pre-processing docx templates', function() {
-    // it('should pre-process a docx template', async function() {
-    //     const template = "test/SimpleWill.docx";
-    //     const result = await openDocx.registerTemplate(template);
-    //     assert.ok(true);
-    // });
-    // it('should create a js function that can execute against its contextHelper with an empty context', async function() {
-    //     const template = "test/SimpleWill.docx";
-    //     const result = await openDocx.compileDocx(template);
-    //     assert.equal(result.HasErrors, false);
-    //     assert.equal(fs.existsSync(result.ExtractedLogic), true);
-    //     assert.equal(fs.existsSync(result.DocxGenTemplate), true);
-
-    //     const str = evaluator.assembleXml({}, result.ExtractedLogic);
-    //     assert.equal(str, '<?xml version="1.0"?><data><a/><A/><b/><B/><c/><C/><d/><D/><e/><E>false</E><h></h><l/><L/><m/><M/><n/><N/><o/><O/></data>');
-    // });
-    // it('previously generated js function should execute against its contextHelper with a fully populated smart context', async function() {
-    //     const template = "test/SimpleWill.docx";
-    //     const jsFile = template + '.js';
-    //     assert.equal(fs.existsSync(jsFile), true);
-
-    //     const data = SimpleWillDemoContext;
-    //     // simulate schema "smartening" to be performed by app engine, based on information in Types
-    //     TestHelperTypes.estate_plan(data);
-    //     // now evaluate the helper against this "smart" data context, to test its functionality
-    //     const str = evaluator.assembleXml(data, jsFile);
-    //     fs.writeFileSync('./' + template + '.asmdata.xml', str);
-    //     assert.equal(str,
-    //         '<?xml version="1.0"?><data><a>John Smith</a><A>Jonestown</A><b>Lebanon</b><B>Pennsylvania</B><c>Kim Johnston</c><C>Philadelphia</C><d>Philadelphia</d><D>Pennsylvania</D><e/><E>true</E><f>Tina Turner</f><F>Los Angeles</F><g>Los Angeles</g><G>California</G><h><h0><H>1</H><i>st</i><I>Kelly Smith</I><j>1234 Anystreet, Allentown, PA</j><J>Daughter</J><k>5555</k><K>My cat.</K></h0><h0><H>2</H><i>nd</i><I>John Smith Jr.</I><j>54321 Geronimo, Jonestown, PA</j><J>Son</J><k>4444</k><K>My house.</K></h0><h0><H>3</H><i>rd</i><I>Diane Kennedy</I><j>Unknown</j><J>Mistress</J><k/><K>My misguided affection.</K></h0><h0><H>4</H><i>th</i><I>Tim Billingsly</I><j>Boulder, CO</j><J>cat</J><k/><K>Everything else.</K></h0></h><l>Pennsylvania</l><L>10th day of March, 2019</L><m>him</m><M>his</M><n>John Doe</n><N>Marilyn Monroe</N><o>PENNSYLVANIA</o><O>ALLEGHENY</O></data>');
-    // });
+describe('Generating XML data for DOCX templates (white box)', function() {
+    it('auto-generated js function should execute with an empty context', async function() {
+        const templatePath = testUtil.GetTemplatePath('SimpleWill.docx');
+        let jsFile = templatePath + '.js';
+        // only re-compile if necessary -- should only happen if this test file is being run independently of others
+        if (!fs.existsSync(jsFile)) {
+            const result = await openDocx.compileDocx(template);
+            assert.equal(result.HasErrors, false);
+            assert.equal(fs.existsSync(result.ExtractedLogic), true);
+            assert.equal(fs.existsSync(result.DocxGenTemplate), true);
+            jsFile = result.ExtractedLogic;
+        }
+        const str = evaluator.assembleXml({}, jsFile);
+        assert.equal(str, '<?xml version="1.0"?><_odx><a/><b/><c/><d/><e/><f/><g/><h/><i/><n>false</n><v></v><w/><x/><y/><z/><A/><B/><C/><D/></_odx>');
+    });
+    it('auto-generated js function should execute against its contextHelper with a populated context', async function() {
+        const templatePath = testUtil.GetTemplatePath('SimpleWill.docx');
+        let jsFile = templatePath + '.js';
+        // only re-compile if necessary -- should only happen if this test file is being run independently of others
+        if (!fs.existsSync(jsFile)) {
+            const result = await openDocx.compileDocx(template);
+            assert.equal(result.HasErrors, false);
+            assert.equal(fs.existsSync(result.ExtractedLogic), true);
+            assert.equal(fs.existsSync(result.DocxGenTemplate), true);
+            jsFile = result.ExtractedLogic;
+        }
+        const data = SimpleWillDemoContext;
+        // simulate schema "smartening" to be performed by app engine, based on information in Types
+        TestHelperTypes.estate_plan(data);
+        // now evaluate the helper against this "smart" data context, to test its functionality
+        const str = evaluator.assembleXml(data, jsFile);
+        fs.writeFileSync(templatePath + '.asmdata.xml', str);
+        assert.equal(str,
+            '<?xml version="1.0"?><_odx><a>John Smith</a><b>Jonestown</b><c>Lebanon</c><d>Pennsylvania</d><e>Kim Johnston</e><f>Philadelphia</f><g>Philadelphia</g><h>Pennsylvania</h><i/><n>true</n><j>Tina Turner</j><k>Los Angeles</k><l>Los Angeles</l><m>California</m><v><v0><o>1</o><p>st</p><q>Kelly Smith</q><r>1234 Anystreet, Allentown, PA</r><s>Daughter</s><t>5555</t><u>My cat.</u></v0><v0><o>2</o><p>nd</p><q>John Smith Jr.</q><r>54321 Geronimo, Jonestown, PA</r><s>Son</s><t>4444</t><u>My house.</u></v0><v0><o>3</o><p>rd</p><q>Diane Kennedy</q><r>Unknown</r><s>Mistress</s><t/><u>My misguided affection.</u></v0><v0><o>4</o><p>th</p><q>Tim Billingsly</q><r>Boulder, CO</r><s>cat</s><t/><u>Everything else.</u></v0></v><w>Pennsylvania</w><x>10th day of March, 2019</x><y>him</y><z>his</z><A>John Doe</A><B>Marilyn Monroe</B><C>PENNSYLVANIA</C><D>ALLEGHENY</D></_odx>');
+    });
     it('list testing', async function() {
-        const template = "test/Lists.docx";
-        const result = await openDocx.compileDocx(template);
+        const templatePath = testUtil.GetTemplatePath('Lists.docx');
+        const result = await openDocx.compileDocx(templatePath);
         assert.equal(result.HasErrors, false);
         const jsFile = result.ExtractedLogic;
-        //const compiledTemplate = result.DocxGenTemplate;
+        const compiledTemplate = result.DocxGenTemplate;
         const data = {Children:[{Name:'Greg',Birthdate:'1954-09-30'},{Name:'Marcia',Birthdate:'1956-08-05'},{Name:'Peter',Birthdate:'1957-11-07'},{Name:'Jan',Birthdate:'1958-04-29'},{Name:'Bobby',Birthdate:'1960-12-19'},{Name:'Cindy',Birthdate:'1961-08-14'}]};
         // simulate schema "smartening" to be performed by app engine, based on information in Types
         TestHelperTypes._list_of(TestHelperTypes.child, data.Children);
         // now evaluate the helper against this "smart" data context, to test its functionality
         const str = evaluator.assembleXml(data, jsFile);
-        fs.writeFileSync('./' + template + '.asmdata.xml', str);
+        fs.writeFileSync(templatePath + '.asmdata.xml', str);
         // note: lists do not (currently) get optimized in the XML -- every time a template repeats through a list, another copy of the list is stored in the XML. This is because I haven't done the work yet to optimize that part.
         // it works well enough this way, but in the future (if the XML chunks are so big they're slowing something down) we can optimize it better.
         assert.equal(str,
-            '<?xml version="1.0"?><data><a><a0><A>Greg</A></a0><a0><A>Marcia</A></a0><a0><A>Peter</A></a0><a0><A>Jan</A></a0><a0><A>Bobby</A></a0><a0><A>Cindy</A></a0></a><b><b0><B>Greg</B><c>09/30/1954</c></b0><b0><B>Marcia</B><c>08/05/1956</c></b0><b0><B>Peter</B><c>11/07/1957</c></b0><b0><B>Jan</B><c>04/29/1958</c></b0><b0><B>Bobby</B><c>12/19/1960</c></b0><b0><B>Cindy</B><c>08/14/1961</c></b0></b></data>');
+            '<?xml version="1.0"?><_odx><b><b0><a>Greg</a><c>09/30/1954</c></b0><b0><a>Marcia</a><c>08/05/1956</c></b0><b0><a>Peter</a><c>11/07/1957</c></b0><b0><a>Jan</a><c>04/29/1958</c></b0><b0><a>Bobby</a><c>12/19/1960</c></b0><b0><a>Cindy</a><c>08/14/1961</c></b0></b></_odx>');
     });
 })
 

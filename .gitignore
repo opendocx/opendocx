@@ -6,6 +6,7 @@
 *.asmdata.xml
 *.js.bak
 *.cs.bak
+test/history/
 
 # Logs
 logs

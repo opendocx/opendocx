@@ -20,6 +20,7 @@ utility/*/obj/
 *.asmdata.xml
 *.js.bak
 *.cs.bak
+test/history/
 
 # 
 OpenDocx.Templater.Tests/bin/Debug/

@@ -1,21 +1,37 @@
 const openDocx = require("../index");
+const templater = require('../docx-templater');
 const assert = require('assert');
 const { TestHelperTypes } = require('yatte');
+const testUtil = require('./test-utils');
 
-describe('Assemble DOCX templates', function() {
-    it('should assemble a template', async function() {
-        const template = "test/SimpleWill.docx";
-        const compileResult = await openDocx.compileDocx(template);
+describe('Assembling documents from DOCX templates', function() {
+    it('should assemble (without errors) a document based on the SimpleWill.docx template', async function() {
+        const templatePath = testUtil.GetTemplatePath('SimpleWill.docx');
+        //const compileResult = await openDocx.compileDocx(templatePath);
         const data = SimpleWillDemoContext;
         // temporarily/experimental: simulate schema "smartening" to be performed by Knackly app engine, based on information in Types
         TestHelperTypes.estate_plan(data);
         // now assemble the document against this "smart" data context
-        let result = await openDocx.assembleDocx(template, data, "test/SimpleWill-assembled.docx");
+        let result = await openDocx.assembleDocx(templatePath, data, testUtil.FileNameAppend(templatePath, '-assembled'));
         assert.equal(result.HasErrors, false);
+        const validation = await templater.validateDocument({documentFile: result.Document});
+        assert.ok(!validation.HasErrors, validation.ErrorList);
     });
-    it('should assemble another one too', async function() {
-        const template = "test/TestNest2.docx";
-        const compileResult = await openDocx.compileDocx(template);
+    it('should assemble (without errors) a document based on the Lists.docx template', async function() {
+        const templatePath = testUtil.GetTemplatePath('Lists.docx');
+        const compileResult = await openDocx.compileDocx(templatePath);
+        const data = {Children:[{Name:'Greg',Birthdate:'1954-09-30'},{Name:'Marcia',Birthdate:'1956-08-05'},{Name:'Peter',Birthdate:'1957-11-07'},{Name:'Jan',Birthdate:'1958-04-29'},{Name:'Bobby',Birthdate:'1960-12-19'},{Name:'Cindy',Birthdate:'1961-08-14'}]};
+        // convert date strings into date objects
+        TestHelperTypes._list_of(TestHelperTypes.child, data.Children);
+
+        let result = await openDocx.assembleDocx(templatePath, data, testUtil.FileNameAppend(templatePath, '-assembled'));
+        assert.equal(result.HasErrors, false);
+        const validation = await templater.validateDocument({documentFile: result.Document});
+        assert.ok(!validation.HasErrors, validation.ErrorList);
+    });
+    it('should assemble (without errors) a document based on the TestNest2.docx template', async function() {
+        const templatePath = testUtil.GetTemplatePath('TestNest2.docx');
+        const compileResult = await openDocx.compileDocx(templatePath);
         const data = {
             'A': 'Hello',
             'B': 'mother',
@@ -31,8 +47,10 @@ describe('Assemble DOCX templates', function() {
             'outer': [{z: true, C:'candy'},{z: false, B2:'brother',inner:[{C:'Ted'},{C:'Gump'}]}],
             'inner': [{C: 'clamp'},{C: 'corrigible'},{C:'corrupt'}]
         };
-        let result = await openDocx.assembleDocx(template, data, "test/TestNest2-assembled.docx");
+        let result = await openDocx.assembleDocx(templatePath, data, testUtil.FileNameAppend(templatePath, '-assembled'));
         assert.equal(result.HasErrors, false);
+        const validation = await templater.validateDocument({documentFile: result.Document});
+        assert.ok(!validation.HasErrors, validation.ErrorList);
     })
 })
 

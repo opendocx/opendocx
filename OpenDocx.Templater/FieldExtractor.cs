@@ -62,7 +62,7 @@ namespace OpenDocx
                 Console.WriteLine("See {0} to determine the errors in the template.", preprocessedTemplate.FileName);
             }
 
-            return new FieldExtractResult(newTemplateFileName, outputFile);
+            return new FieldExtractResult(newTemplateFileName, outputFile, templateError);
         }
 
         private static bool PrepareTemplate(WordprocessingDocument wordDoc, FieldAccumulator fieldAccumulator)

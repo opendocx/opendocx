@@ -4,10 +4,13 @@ let atomStore = {};
 let atomSeed = 0;
 
 module.exports = function(str) {
-    if (str===null) { // reset :-)
+    if (str==='###reset###') {
         atomSeed = 0;
         atomStore = {};
         return;
+    }
+    if (str===null) {
+        throw "Unexpected: cannot atomize a null string"
     }
     var result = atomStore[str];
     if (typeof result == 'string') return result;

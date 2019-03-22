@@ -8,7 +8,7 @@ var xmlBuilder, contextStack;
 exports.assembleXml = function (context, templateJsFile, joinstr = "") {
     xmlBuilder = ['<?xml version="1.0"?>'];
     contextStack = new ContextStack();
-    const extractedLogic = require('./' + templateJsFile);
+    const extractedLogic = require(templateJsFile);
     extractedLogic.evaluate(context, this);
     return xmlBuilder.join(joinstr);
 }
