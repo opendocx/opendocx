@@ -10,30 +10,30 @@ describe('3 - Pre-processing docx templates', function() {
     //     const result = await openDocx.registerTemplate(template);
     //     assert.ok(true);
     // });
-    it('should create a js function that can execute against its contextHelper with an empty context', async function() {
-        const template = "test/SimpleWill.docx";
-        const result = await openDocx.compileDocx(template);
-        assert.equal(result.HasErrors, false);
-        assert.equal(fs.existsSync(result.ExtractedLogic), true);
-        assert.equal(fs.existsSync(result.DocxGenTemplate), true);
+    // it('should create a js function that can execute against its contextHelper with an empty context', async function() {
+    //     const template = "test/SimpleWill.docx";
+    //     const result = await openDocx.compileDocx(template);
+    //     assert.equal(result.HasErrors, false);
+    //     assert.equal(fs.existsSync(result.ExtractedLogic), true);
+    //     assert.equal(fs.existsSync(result.DocxGenTemplate), true);
 
-        const str = evaluator.assembleXml({}, result.ExtractedLogic);
-        assert.equal(str, '<?xml version="1.0"?><data><a/><A/><b/><B/><c/><C/><d/><D/><e/><E>false</E><h></h><l/><L/><m/><M/><n/><N/><o/><O/></data>');
-    });
-    it('previously generated js function should execute against its contextHelper with a fully populated smart context', async function() {
-        const template = "test/SimpleWill.docx";
-        const jsFile = template + '.js';
-        assert.equal(fs.existsSync(jsFile), true);
+    //     const str = evaluator.assembleXml({}, result.ExtractedLogic);
+    //     assert.equal(str, '<?xml version="1.0"?><data><a/><A/><b/><B/><c/><C/><d/><D/><e/><E>false</E><h></h><l/><L/><m/><M/><n/><N/><o/><O/></data>');
+    // });
+    // it('previously generated js function should execute against its contextHelper with a fully populated smart context', async function() {
+    //     const template = "test/SimpleWill.docx";
+    //     const jsFile = template + '.js';
+    //     assert.equal(fs.existsSync(jsFile), true);
 
-        const data = SimpleWillDemoContext;
-        // simulate schema "smartening" to be performed by app engine, based on information in Types
-        TestHelperTypes.estate_plan(data);
-        // now evaluate the helper against this "smart" data context, to test its functionality
-        const str = evaluator.assembleXml(data, jsFile);
-        fs.writeFileSync('./' + template + '.asmdata.xml', str);
-        assert.equal(str,
-            '<?xml version="1.0"?><data><a>John Smith</a><A>Jonestown</A><b>Lebanon</b><B>Pennsylvania</B><c>Kim Johnston</c><C>Philadelphia</C><d>Philadelphia</d><D>Pennsylvania</D><e/><E>true</E><f>Tina Turner</f><F>Los Angeles</F><g>Los Angeles</g><G>California</G><h><h0><H>1</H><i>st</i><I>Kelly Smith</I><j>1234 Anystreet, Allentown, PA</j><J>Daughter</J><k>5555</k><K>My cat.</K></h0><h0><H>2</H><i>nd</i><I>John Smith Jr.</I><j>54321 Geronimo, Jonestown, PA</j><J>Son</J><k>4444</k><K>My house.</K></h0><h0><H>3</H><i>rd</i><I>Diane Kennedy</I><j>Unknown</j><J>Mistress</J><k/><K>My misguided affection.</K></h0><h0><H>4</H><i>th</i><I>Tim Billingsly</I><j>Boulder, CO</j><J>cat</J><k/><K>Everything else.</K></h0></h><l>Pennsylvania</l><L>10th day of March, 2019</L><m>him</m><M>his</M><n>John Doe</n><N>Marilyn Monroe</N><o>PENNSYLVANIA</o><O>ALLEGHENY</O></data>');
-    });
+    //     const data = SimpleWillDemoContext;
+    //     // simulate schema "smartening" to be performed by app engine, based on information in Types
+    //     TestHelperTypes.estate_plan(data);
+    //     // now evaluate the helper against this "smart" data context, to test its functionality
+    //     const str = evaluator.assembleXml(data, jsFile);
+    //     fs.writeFileSync('./' + template + '.asmdata.xml', str);
+    //     assert.equal(str,
+    //         '<?xml version="1.0"?><data><a>John Smith</a><A>Jonestown</A><b>Lebanon</b><B>Pennsylvania</B><c>Kim Johnston</c><C>Philadelphia</C><d>Philadelphia</d><D>Pennsylvania</D><e/><E>true</E><f>Tina Turner</f><F>Los Angeles</F><g>Los Angeles</g><G>California</G><h><h0><H>1</H><i>st</i><I>Kelly Smith</I><j>1234 Anystreet, Allentown, PA</j><J>Daughter</J><k>5555</k><K>My cat.</K></h0><h0><H>2</H><i>nd</i><I>John Smith Jr.</I><j>54321 Geronimo, Jonestown, PA</j><J>Son</J><k>4444</k><K>My house.</K></h0><h0><H>3</H><i>rd</i><I>Diane Kennedy</I><j>Unknown</j><J>Mistress</J><k/><K>My misguided affection.</K></h0><h0><H>4</H><i>th</i><I>Tim Billingsly</I><j>Boulder, CO</j><J>cat</J><k/><K>Everything else.</K></h0></h><l>Pennsylvania</l><L>10th day of March, 2019</L><m>him</m><M>his</M><n>John Doe</n><N>Marilyn Monroe</N><o>PENNSYLVANIA</o><O>ALLEGHENY</O></data>');
+    // });
     it('list testing', async function() {
         const template = "test/Lists.docx";
         const result = await openDocx.compileDocx(template);

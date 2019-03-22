@@ -15,7 +15,6 @@ Portions Copyright (c) Eric White Inc. All rights reserved.
 using System;
 using System.Collections.Generic;
 using System.Dynamic;
-using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using System.Text.RegularExpressions;
@@ -23,111 +22,56 @@ using System.Linq;
 using System.Xml.Linq;
 using OpenXmlPowerTools;
 using DocumentFormat.OpenXml.Packaging;
+using Newtonsoft.Json;
 
 namespace OpenDocx
 {
     public class Templater
     {
-        public AssembleResult AssembleDocument(string templateFile, TextReader xmlData, string outputFile)
+        public CompileResult CompileTemplate(string originalTemplateFile, string preProcessedTemplateFile, string parsedFieldInfoFile)
         {
-            if (!File.Exists(templateFile))
-                throw new FileNotFoundException("Template not found in the expected location", templateFile);
-            WmlDocument templateDoc = new WmlDocument(templateFile); // reads the template's bytes into memory
-            XElement data = xmlData.Peek() == -1 ? new XElement("none") : XElement.Load(xmlData);
-            WmlDocument wmlAssembledDoc = DocumentAssembler.AssembleDocument(templateDoc, data, out bool templateError);
-            if (templateError)
-            {
-                Console.WriteLine("Errors in template.");
-                Console.WriteLine("See the assembled document to inspect errors.");
-            }
-            //// save the output (even in the case of error, since error messages are in the file)
-            wmlAssembledDoc.SaveAs(outputFile);
-            return new AssembleResult(outputFile, templateError);
-        }
-
-        // when calling from Node.js via Edge, we only get to pass one parameter
-        public object AssembleDocument(dynamic input)
-        {
-            using (var xmlData = new StringReader((string)input.xmlData))
-            {
-                return AssembleDocument((string)input.templateFile, xmlData, (string)input.documentFile);
-            }
-        }
-
-        // assembly is synchronous, but when calling from Node.js (via Edge) we may still need an async method
-        public async Task<object> AssembleDocumentAsync(dynamic input)
-        {
-            await Task.Yield();
-            return AssembleDocument(input);
-        }
-
-        public CompileResult CompileTemplate(string templateFileName)
-        {
-            var fieldParser = new AsyncFieldParser(); // no async callback specified
-            // because no async callback was specified, above, the entire method will execute synchronously.
-            return CompileTemplateAsync(templateFileName, fieldParser).GetAwaiter().GetResult();
+            string json = File.ReadAllText(parsedFieldInfoFile);
+            var xm = JsonConvert.DeserializeObject<FieldTransformIndex>(json);
+            return TransformTemplate(originalTemplateFile, preProcessedTemplateFile, xm);
         }
 
         public async Task<object> CompileTemplateAsync(dynamic input)
         {
             var templateFile = (string)input.templateFile;
-            AsyncFieldParser fieldParser;
-            if (input is ExpandoObject && ((IDictionary<string, object>)input).ContainsKey("parseField"))
-                fieldParser = new AsyncFieldParser((Func<object, Task<object>>)input.parseField);
-            else
-                fieldParser = new AsyncFieldParser();
-
-            return await CompileTemplateAsync(templateFile, fieldParser);
+            var originalTemplate = (string)input.originalTemplateFile;
+            var fieldInfoFileName = (string)input.fieldInfoFile;
+            return CompileTemplate(originalTemplate, templateFile, fieldInfoFileName);
         }
 
-        private static async Task<CompileResult> CompileTemplateAsync(string templateFileName, IAsyncFieldParser parser)
+        private static CompileResult TransformTemplate(string originalTemplateFile, string preProcessedTemplateFile, FieldTransformIndex xm)
         {
-            string newDocxFilename = templateFileName + "gen.docx";
-            string jsFileName = templateFileName + ".js";
-            WmlDocument templateDoc = new WmlDocument(templateFileName); // just reads the template's bytes into memory (that's all), read-only
-            WmlDocument preprocessedTemplate = null;
-            bool templateError = false;
+            string newDocxFilename = originalTemplateFile + "gen.docx";
+            WmlDocument templateDoc = new WmlDocument(preProcessedTemplateFile); // just reads the template's bytes into memory (that's all), read-only
             byte[] byteArray = templateDoc.DocumentByteArray;
-            string jsFunction;
+            WmlDocument transformedTemplate = null;
+            bool templateError = false;
             using (MemoryStream mem = new MemoryStream())
             {
-                mem.Write(byteArray, 0, (int)byteArray.Length); // copy template file (binary) into memory -- I guess so the template/file handle isn't held/locked?
+                mem.Write(byteArray, 0, byteArray.Length); // copy template file (binary) into memory -- I guess so the template/file handle isn't held/locked?
                 using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(mem, true)) // read & parse that byte array into OXML document (also in memory)
                 {
-                    var translationMetadata = new TranslationMetadata("data");
-                    templateError = await PrepareTemplateAsync(wordDoc, parser, translationMetadata);
-                    jsFunction = translationMetadata.GetFunc();
-
-                    // experimental: save a "normalized", plain text version of the template as Flat OPC, to see what it looks like at this point in processing
-                    //string str = wordDoc.ToFlatOpcString();
-                    //using (StreamWriter sw = File.CreateText(outputFilename + ".FlatOpc.xml"))
-                    //{
-                    //    sw.Write(str);
-                    //    sw.Close();
-                    //}
-                    //// end experimental
+                    templateError = PrepareTemplate(wordDoc, xm);
                 }
-                preprocessedTemplate = new WmlDocument(newDocxFilename, mem.ToArray());
+                transformedTemplate = new WmlDocument(newDocxFilename, mem.ToArray());
             }
             // save the output (even in the case of error, since error messages are in the file)
-            preprocessedTemplate.Save();
-
-            using (StreamWriter sw = File.CreateText(jsFileName))
-            {
-                sw.Write(jsFunction);
-                sw.Close();
-            }
+            transformedTemplate.Save();
 
             if (templateError)
             {
                 Console.WriteLine("Errors in template.");
-                Console.WriteLine("See {0} to determine the errors in the template.", preprocessedTemplate.FileName);
+                Console.WriteLine("See {0} to determine the errors in the template.", transformedTemplate.FileName);
             }
 
-            return new CompileResult(preprocessedTemplate.FileName, jsFileName, templateError);
+            return new CompileResult(transformedTemplate.FileName, templateError);
         }
 
-        private static async Task<bool> PrepareTemplateAsync(WordprocessingDocument wordDoc, IAsyncFieldParser fieldParser, TranslationMetadata xm)
+        private static bool PrepareTemplate(WordprocessingDocument wordDoc, FieldTransformIndex xm)
         {
             if (RevisionAccepter.HasTrackedRevisions(wordDoc))
                 throw new FieldParseException("Invalid template - contains tracked revisions");
@@ -135,14 +79,14 @@ namespace OpenDocx
             SimplifyTemplateMarkup(wordDoc);
 
             var te = new TemplateError();
-            var partTasks = wordDoc.ContentParts().Select(part => PrepareTemplatePartAsync(fieldParser, xm, te, part));
-            await Task.WhenAll(partTasks);
+            foreach (var part in wordDoc.ContentParts())
+            {
+                PrepareTemplatePart(part, xm, te);
+            }
             return te.HasError;
         }
 
-        private static readonly object s_partLock = new object();
-
-        private static async Task PrepareTemplatePartAsync(IAsyncFieldParser parser, TranslationMetadata xm, TemplateError te, OpenXmlPart part)
+        private static void PrepareTemplatePart(OpenXmlPart part, FieldTransformIndex xm, TemplateError te)
         {
             XDocument xDoc = part.GetXDocument();
 
@@ -151,8 +95,8 @@ namespace OpenDocx
             // content controls in cells can surround the W.tc element, so transform so that such content controls are within the cell content
             xDocRoot = (XElement)NormalizeContentControlsInCells(xDocRoot);
 
-            // parse OpenDocx fields into metadata
-            xDocRoot = (XElement) await ParseFieldsAsync(xDocRoot, parser, te);
+            // transform OpenDocx fields into temporary parsed metadata objects (??)
+            xDocRoot = (XElement) ParseFields(xDocRoot, xm, te);
 
             // Repeat, EndRepeat, Conditional, EndConditional are allowed at run level, but only if there is a matching pair
             // if there is only one Repeat, EndRepeat, Conditional, EndConditional, then move to block level.
@@ -168,11 +112,7 @@ namespace OpenDocx
             xDocRoot = (XElement)ContentReplacementTransform(xDocRoot, xm, te);
 
             xDoc.Elements().First().ReplaceWith(xDocRoot);
-            // work around apparent issues with thread safety when replacing the content of a part within a package
-            lock (s_partLock)
-            {
-                part.PutXDocument();
-            }
+            part.PutXDocument();
         }
 
         private static XElement RemoveGoBackBookmarks(XElement xElement)
@@ -233,7 +173,7 @@ namespace OpenDocx
             public static readonly XName Depth = "Depth";
         }
 
-        internal class OD
+        internal class OD // we may not need this class (here)... it's now out in the node.js code
         {
             public static readonly XName Content = "Content";
             public static readonly XName List = "List";
@@ -245,9 +185,10 @@ namespace OpenDocx
 
             public static readonly XName Expr = "expr";
             public static readonly XName Depth = "depth";
+            public static readonly XName Id = "id";
         }
 
-        private static async Task<object> ParseFieldsAsync(XNode node, IAsyncFieldParser parser, TemplateError te)
+        private static object ParseFields(XNode node, FieldTransformIndex xm, TemplateError te)
         {
             XElement element = node as XElement;
             if (element != null)
@@ -257,141 +198,21 @@ namespace OpenDocx
                     var alias = (string)element.Elements(W.sdtPr).Elements(W.alias).Attributes(W.val).FirstOrDefault();
                     if (alias == null || alias == "")
                     {
-                        var ccContents = element
-                            .DescendantsTrimmed(W.txbxContent)
-                            .Where(e => e.Name == W.t)
-                            .Select(t => (string)t)
-                            .StringConcatenate()
-                            .Trim()
-                            .Replace('�', '"')
-                            .Replace('�', '"');
-                        if (ccContents.StartsWith(parser.DelimiterOpen))
+                        var tag = (string)element.Elements(W.sdtPr).Elements(W.tag).Attributes(W.val).FirstOrDefault();
+                        System.Diagnostics.Debug.Assert(!string.IsNullOrEmpty(tag));
+                        if (xm.TryGetValue(tag, out var fieldInfo))
                         {
-                            XElement xml = await TransformContentToMetadataAsync(te, ccContents, parser);
-                            if (xml.Name == W.p || xml.Name == W.r)  // this means there was an error processing the XML.
-                            {
-                                if (element.Parent.Name == W.p)
-                                    return xml.Elements(W.r);
-                                return xml;
-                            }
+                            XElement xml = new XElement(fieldInfo.fieldType, new XAttribute(OD.Id, tag));
                             xml.Add(element.Elements(W.sdtContent).Elements());
                             return xml;
                         }
-                        var contentNodeTasks = element.Nodes().Select(n => ParseFieldsAsync(n, parser, te));
-                        return new XElement(element.Name,
-                            element.Attributes(),
-                            await Task.WhenAll(contentNodeTasks));
-                    }
-                    var otherContentNodeTasks = element.Nodes().Select(n => ParseFieldsAsync(n, parser, te));
-                    return new XElement(element.Name,
-                        element.Attributes(),
-                        await Task.WhenAll(otherContentNodeTasks));
-                }
-                if (element.Name == W.p)
-                {
-                    var paraContents = element
-                        .DescendantsTrimmed(W.txbxContent)
-                        .Where(e => e.Name == W.t)
-                        .Select(t => (string)t)
-                        .StringConcatenate()
-                        .Trim();
-                    int occurances = paraContents.Select((c, i) => paraContents.Substring(i)).Count(sub => sub.StartsWith(parser.EmbedOpen));
-                    if (paraContents.StartsWith(parser.EmbedOpen) && paraContents.EndsWith(parser.EmbedClose) && occurances == 1)
-                    {
-                        var content = paraContents.Substring(parser.EmbedOpen.Length, paraContents.Length - parser.EmbedOpen.Length - parser.EmbedClose.Length).Trim();
-                        XElement xml = await TransformContentToMetadataAsync(te, content, parser);
-                        if (xml.Name == W.p || xml.Name == W.r)
-                            return xml;
-                        xml.Add(element);
-                        return xml;
-                    }
-                    if (paraContents.Contains(parser.EmbedOpen))
-                    {
-                        List<RunReplacementInfo> runReplacementInfo = new List<RunReplacementInfo>();
-                        var thisGuid = Guid.NewGuid().ToString();
-                        var r = new Regex(Regex.Escape(parser.EmbedOpen) + ".*?" + Regex.Escape(parser.EmbedClose));
-                        XElement xml = null;
-                        OpenXmlRegex.Replace(new[] { element }, r, thisGuid, (para, match) =>
-                        {
-                            var matchString = match.Value.Trim();
-                            var content = matchString.Substring(
-                                    parser.EmbedOpen.Length,
-                                    matchString.Length - parser.EmbedOpen.Length - parser.EmbedClose.Length
-                                ).Trim().Replace('�', '"').Replace('�', '"');
-                            try
-                            {
-                                xml = parser.ParseField(content);
-                            }
-                            catch (FieldParseException e)
-                            {
-                                RunReplacementInfo rri = new RunReplacementInfo()
-                                {
-                                    Xml = null,
-                                    ParseExceptionMessage = "ParseException: " + e.Message,
-                                    SchemaValidationMessage = null,
-                                };
-                                runReplacementInfo.Add(rri);
-                                return true;
-                            }
-                            RunReplacementInfo rri2 = new RunReplacementInfo()
-                            {
-                                Xml = xml,
-                                ParseExceptionMessage = null,
-                                SchemaValidationMessage = null,
-                            };
-                            runReplacementInfo.Add(rri2);
-                            return true;
-                        }, false);
-
-                        var newPara = new XElement(element);
-                        foreach (var rri in runReplacementInfo)
-                        {
-                            var runToReplace = newPara.Descendants(W.r).FirstOrDefault(rn => rn.Value == thisGuid && rn.Parent.Name != OD.Content);
-                            if (runToReplace == null)
-                                throw new FieldParseException("Internal error");
-                            if (rri.ParseExceptionMessage != null)
-                                runToReplace.ReplaceWith(CreateRunErrorMessage(rri.ParseExceptionMessage, te));
-                            else if (rri.SchemaValidationMessage != null)
-                                runToReplace.ReplaceWith(CreateRunErrorMessage(rri.SchemaValidationMessage, te));
-                            else
-                            {
-                                var newXml = new XElement(rri.Xml);
-                                newXml.Add(runToReplace);
-                                runToReplace.ReplaceWith(newXml);
-                            }
-                        }
-                        var coalescedParagraph = WordprocessingMLUtil.CoalesceAdjacentRunsWithIdenticalFormatting(newPara);
-                        return coalescedParagraph;
                     }
                 }
-
-                var childNodeTasks = element.Nodes().Select(n => ParseFieldsAsync(n, parser, te));
                 return new XElement(element.Name,
                     element.Attributes(),
-                    await Task.WhenAll(childNodeTasks));
+                    element.Nodes().Select(n => ParseFields(n, xm, te)));
             }
             return node;
-        }
-
-        private static async Task<XElement> TransformContentToMetadataAsync(TemplateError te, string content, IAsyncFieldParser parser)
-        {
-            XElement xml;
-            try
-            {
-                xml = await parser.ParseFieldAsync(content);
-            }
-            catch (FieldParseException e)
-            {
-                return CreateParaErrorMessage("ParseException: " + e.Message, te);
-            }
-            return xml;
-        }
-
-        private class RunReplacementInfo
-        {
-            public XElement Xml;
-            public string ParseExceptionMessage;
-            public string SchemaValidationMessage;
         }
 
         private static XName[] s_MetaToForceToBlock = new XName[] {
@@ -651,15 +472,15 @@ namespace OpenDocx
 
         static XElement PWrap(params object[] content) => new XElement(W.p, content);
 
-        static object ContentReplacementTransform(XNode node, TranslationMetadata compiler, TemplateError templateError)
+        static object ContentReplacementTransform(XNode node, FieldTransformIndex xm, TemplateError templateError)
         {
             XElement element = node as XElement;
             if (element != null)
             {
                 if (element.Name == OD.Content)
                 {
-                    var selector = compiler.DefineProperty(element.Attribute(OD.Expr).Value);
-                    var text = "<" + PA.Content + " "
+                    var selector = "./" + xm[element.Attribute(OD.Id).Value].atomizedExpr;
+                    var fieldText = "<" + PA.Content + " "
                         + PA.Select + "=\"" + selector + "\" "
                         + PA.Optional + "=\"true\"/>";
                     XElement ccc = null;
@@ -669,18 +490,19 @@ namespace OpenDocx
                     {
                         XElement r = new XElement(W.r,
                             para.Elements(W.pPr).FirstOrDefault().Elements(W.rPr).FirstOrDefault(),
-                            new XElement(W.t, text));
+                            new XElement(W.t, fieldText));
                         ccc = PWrap(para.Elements(W.pPr), r);
                     }
                     else
                     {
-                        ccc = new XElement(W.r, new XElement(W.t, text));
+                        ccc = new XElement(W.r, new XElement(W.t, fieldText));
                     }
                     return CCWrap(ccc);
                 }
                 if (element.Name == OD.List)
                 {
-                    var selector = compiler.BeginList(element.Attribute(OD.Expr).Value);
+                    var listAtom = xm[element.Attribute(OD.Id).Value].atomizedExpr;
+                    var selector = "./" + listAtom + "/" + listAtom + "0";
                     var startText = "<" + PA.Repeat + " "
                         + PA.Select + "=\"" + selector + "\" "
                         + PA.Optional + "=\"true\"/>";
@@ -688,9 +510,8 @@ namespace OpenDocx
                     XElement para = element.Descendants(W.p).FirstOrDefault();
                     var repeatingContent = element
                         .Elements()
-                        .Select(e => ContentReplacementTransform(e, compiler, templateError))
+                        .Select(e => ContentReplacementTransform(e, xm, templateError))
                         .ToList();
-                    compiler.EndList();
                     XElement startElem = new XElement(W.r, new XElement(W.t, startText));
                     XElement endElem = new XElement(W.r, new XElement(W.t, endText));
                     if (para != null) // block-level list
@@ -714,15 +535,14 @@ namespace OpenDocx
                     bool blockLevel = element.Descendants(W.p).FirstOrDefault() != null;
                     if (element.Name == OD.If)
                     {
-                        var selector = compiler.BeginIf(element.Attribute(OD.Expr).Value);
+                        var selector = xm[element.Attribute(OD.Id).Value].atomizedExpr;
                         var startText = "<" + PA.Conditional + " "
                             + PA.Select + "=\"" + selector + "\" "
                             + PA.Match + "=\"true\"/>";
                         var content = element
                             .Elements()
-                            .Select(e => ContentReplacementTransform(e, compiler, templateError))
+                            .Select(e => ContentReplacementTransform(e, xm, templateError))
                             .ToList();
-                        compiler.EndIf();
                         XElement startElem = new XElement(W.r, new XElement(W.t, startText));
                         if (blockLevel)
                         {
@@ -740,17 +560,20 @@ namespace OpenDocx
                     }
                     if (element.Name == OD.ElseIf)
                     {
-                        var selector = compiler.Else();
+                        XElement lookUp = element.Parent;
+                        while (lookUp.Name != OD.If && lookUp.Name != OD.ElseIf)
+                            lookUp = lookUp.Parent;
+                        var selector = xm[lookUp.Attribute(OD.Id).Value].atomizedExpr;
                         var startElseText = "<" + PA.Conditional + " "
                             + PA.Select + "=\"" + selector + "\" "
                             + PA.NotMatch + "=\"true\"/>"; // NotMatch instead of Match, represents "Else" branch
-                        selector = compiler.BeginIf(element.Attribute(OD.Expr).Value);
+                        selector = xm[element.Attribute(OD.Id).Value].atomizedExpr;
                         var nestedIfText = "<" + PA.Conditional + " "
                             + PA.Select + "=\"" + selector + "\" "
                             + PA.Match + "=\"true\"/>";
                         var content = element
                             .Elements()
-                            .Select(e => ContentReplacementTransform(e, compiler, templateError))
+                            .Select(e => ContentReplacementTransform(e, xm, templateError))
                             .ToList();
                         XElement startElseElem = new XElement(W.r, new XElement(W.t, startElseText));
                         XElement nestedIfElem = new XElement(W.r, new XElement(W.t, nestedIfText));
@@ -776,25 +599,28 @@ namespace OpenDocx
                     }
                     if (element.Name == OD.Else)
                     {
-                        var selector = compiler.Else();
+                        XElement lookUp = element.Parent;
+                        while (lookUp.Name != OD.If && lookUp.Name != OD.ElseIf)
+                            lookUp = lookUp.Parent;
+                        var selector = xm[lookUp.Attribute(OD.Id).Value].atomizedExpr;
                         var startElseText = "<" + PA.Conditional + " "
                             + PA.Select + "=\"" + selector + "\" "
                             + PA.NotMatch + "=\"true\"/>"; // NotMatch instead of Match, represents "Else" branch
 
                         var content = element
                             .Elements()
-                            .Select(e => ContentReplacementTransform(e, compiler, templateError))
+                            .Select(e => ContentReplacementTransform(e, xm, templateError))
                             .ToList();
                         XElement startElseElem = new XElement(W.r, new XElement(W.t, startElseText));
                         if (blockLevel) // block-level conditional
                         {
                             content.Insert(0, CCWrap(PWrap(endElem)));
-                            content.Add(CCWrap(PWrap(startElseElem)));
+                            content.Insert(1, CCWrap(PWrap(startElseElem)));
                         }
                         else // run-level
                         {
                             content.Insert(0, CCWrap(endElem));
-                            content.Add(CCWrap(startElseElem));
+                            content.Insert(1, CCWrap(startElseElem));
                         }
                         // no "end" tag for the "else" branch, because the end is inserted by the If element after all its contents
                         return content;
@@ -802,7 +628,7 @@ namespace OpenDocx
                 }
                 return new XElement(element.Name,
                     element.Attributes(),
-                    element.Nodes().Select(n => ContentReplacementTransform(n, compiler, templateError)));
+                    element.Nodes().Select(n => ContentReplacementTransform(n, xm, templateError)));
             }
             return node;
         }

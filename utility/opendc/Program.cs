@@ -40,30 +40,30 @@ namespace opendc
 
         static void Compile(string templatePath)
         {
-            string fullPath = Path.GetFullPath(templatePath);
-            //string templateDir = Path.GetDirectoryName(fullPath);
-            var templater = new OpenDocx.Templater();
-            var result = templater.CompileTemplate(fullPath);
-            Console.WriteLine("DocxGenTemplate={0}", result.DocxGenTemplate);
-            Console.WriteLine("ExtractedLogic={0}", result.ExtractedLogic);
-            Console.WriteLine("HasErrors={0}", result.HasErrors ? @"true" : @"false");
+            //string fullPath = Path.GetFullPath(templatePath);
+            ////string templateDir = Path.GetDirectoryName(fullPath);
+            //var templater = new OpenDocx.Templater();
+            //var result = templater.CompileTemplate(fullPath, "");
+            //Console.WriteLine("DocxGenTemplate={0}", result.DocxGenTemplate);
+            ////Console.WriteLine("ExtractedLogic={0}", result.ExtractedLogic);
+            //Console.WriteLine("HasErrors={0}", result.HasErrors ? @"true" : @"false");
         }
 
         private static void Assemble(string compiledTemplatePath, string documentPath)
         {
-            var templater = new OpenDocx.Templater();
-            AssembleResult result;
-            if (Console.IsInputRedirected)
-            {
-                result = templater.AssembleDocument(compiledTemplatePath, Console.In, documentPath);
-            }
-            else
-            {
-                Console.WriteLine("(no xml detected on STDIN; proceeding without data)");
-                result = templater.AssembleDocument(compiledTemplatePath, new StringReader(""), documentPath);
-            }
-            Console.WriteLine("Document={0}", result.Document);
-            Console.WriteLine("HasErrors={0}", result.HasErrors);
+            //var templater = new OpenDocx.Templater();
+            //AssembleResult result;
+            //if (Console.IsInputRedirected)
+            //{
+            //    result = templater.AssembleDocument(compiledTemplatePath, Console.In, documentPath);
+            //}
+            //else
+            //{
+            //    Console.WriteLine("(no xml detected on STDIN; proceeding without data)");
+            //    result = templater.AssembleDocument(compiledTemplatePath, new StringReader(""), documentPath);
+            //}
+            //Console.WriteLine("Document={0}", result.Document);
+            //Console.WriteLine("HasErrors={0}", result.HasErrors);
         }
 
         private static void GetData(string jsFilePath)

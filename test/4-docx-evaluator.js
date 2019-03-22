@@ -3,8 +3,9 @@ const assert = require('assert');
 const { TestHelperTypes } = require('yatte');
 
 describe('Assemble DOCX templates', function() {
-    it('should assemble a template that has been pre-processed', async function() {
+    it('should assemble a template', async function() {
         const template = "test/SimpleWill.docx";
+        const compileResult = await openDocx.compileDocx(template);
         const data = SimpleWillDemoContext;
         // temporarily/experimental: simulate schema "smartening" to be performed by Knackly app engine, based on information in Types
         TestHelperTypes.estate_plan(data);
@@ -12,6 +13,27 @@ describe('Assemble DOCX templates', function() {
         let result = await openDocx.assembleDocx(template, data, "test/SimpleWill-assembled.docx");
         assert.equal(result.HasErrors, false);
     });
+    it('should assemble another one too', async function() {
+        const template = "test/TestNest2.docx";
+        const compileResult = await openDocx.compileDocx(template);
+        const data = {
+            'A': 'Hello',
+            'B': 'mother',
+            'B2': 'mother-in-law',
+            'C': 'father',
+            'D': 'camp',
+            'E': 'Grenada',
+            'F': 'entertaining',
+            'G': 'fun',
+            'H': 'raining',
+            'x': false,
+            'y': 1,
+            'outer': [{z: true, C:'candy'},{z: false, B2:'brother',inner:[{C:'Ted'},{C:'Gump'}]}],
+            'inner': [{C: 'clamp'},{C: 'corrigible'},{C:'corrupt'}]
+        };
+        let result = await openDocx.assembleDocx(template, data, "test/TestNest2-assembled.docx");
+        assert.equal(result.HasErrors, false);
+    })
 })
 
 const SimpleWillDemoContext = {

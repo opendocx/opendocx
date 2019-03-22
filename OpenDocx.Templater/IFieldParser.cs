@@ -15,20 +15,6 @@ using System.Xml.Linq;
 
 namespace OpenDocx
 {
-    public interface IFieldParser
-    {
-        string DelimiterOpen { get; }
-        string DelimiterClose { get; }
-        string EmbedOpen { get; }
-        string EmbedClose { get; }
-        XElement ParseField(string content);
-    }
-
-    public interface IAsyncFieldParser: IFieldParser
-    {
-        Task<XElement> ParseFieldAsync(string content);
-    }
-
     public class FieldParseException : Exception
     {
         public FieldParseException() { }

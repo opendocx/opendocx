@@ -1,31 +1,29 @@
 'use strict';
 
-const { ContextStack, compileField } = require('yatte');
+const { ContextStack, Engine } = require('yatte');
+const compileExpr = Engine.compileExpr;
 
 var xmlBuilder, contextStack;
 
-const assembleXml = function (context, templateJsFile, joinstr = "") {
+exports.assembleXml = function (context, templateJsFile, joinstr = "") {
     xmlBuilder = ['<?xml version="1.0"?>'];
     contextStack = new ContextStack();
     const extractedLogic = require('./' + templateJsFile);
     extractedLogic.evaluate(context, this);
     return xmlBuilder.join(joinstr);
 }
-exports.assembleXml = assembleXml;
 
-const beginObject = function (ident, objContext) {
+exports.beginObject = function (ident, objContext) {
     contextStack.pushObject(ident, objContext);
     xmlBuilder.push(`<${contextStack.peekName()}>`);
 }
-exports.beginObject = beginObject;
 
-const endObject = function () {
+exports.endObject = function () {
     const frame = contextStack.popObject();
     xmlBuilder.push(`</${frame.name}>`);
 }
-exports.endObject = endObject;
 
-const define = function (ident, expr) {
+exports.define = function (ident, expr) {
     if (contextStack.empty()) {
         throw 'internal error: Cannot define a member on an empty context stack';
     }
@@ -34,7 +32,7 @@ const define = function (ident, expr) {
         throw `Internal error: cannot define a member on a ${frame.type} context`;
     }
 
-    const evaluator = compileField(expr); // these are cached so this should be fast
+    const evaluator = compileExpr(expr); // these are cached so this should be fast
     let value = evaluator(frame.context); // we need to make sure this is memoized to avoid unnecessary re-evaluation
 
     if (value === null || typeof value === 'undefined') {
@@ -43,9 +41,8 @@ const define = function (ident, expr) {
         xmlBuilder.push(`<${ident}>${value}</${ident}>`);
     }
 }
-exports.define = define;
 
-const defineCondition = function (ident, expr, persist = true) {
+exports.beginCondition = function (ident, expr, persist = true) {
     if (contextStack.empty()) {
         throw 'internal error: Cannot define a condition on an empty context stack';
     }
@@ -53,7 +50,7 @@ const defineCondition = function (ident, expr, persist = true) {
     if (frame.type != 'Object') {
         throw `Internal error: cannot define a condition on a ${frame.type} context`;
     }
-    const evaluator = compileField(expr); // these are cached so this should be fast
+    const evaluator = compileExpr(expr); // these are cached so this should be fast
     const value = evaluator(frame.context); // we need to make sure this is memoized to avoid unnecessary re-evaluation
     const bValue = ContextStack.IsTruthy(value);
     if (persist) {
@@ -61,20 +58,17 @@ const defineCondition = function (ident, expr, persist = true) {
     }
     return bValue;
 }
-exports.defineCondition = defineCondition;
 
-const beginList = function (ident, expr) {
+exports.beginList = function (ident, expr) {
     const frame = contextStack.peek();
-    const evaluator = compileField(expr); // these are cached so this should be fast
+    const evaluator = compileExpr(expr); // these are cached so this should be fast
     let iterable = evaluator(frame.context); // we need to make sure this is memoized to avoid unnecessary re-evaluation
     const indices = contextStack.pushList(ident, iterable);
     xmlBuilder.push(`<${ident}>`);
     return indices;
 }
-exports.beginList = beginList;
 
-const endList = function () {
+exports.endList = function () {
     const frame = contextStack.popList();
     xmlBuilder.push(`</${frame.name}>`);
 }
-exports.endList = endList;

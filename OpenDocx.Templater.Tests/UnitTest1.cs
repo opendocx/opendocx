@@ -18,44 +18,76 @@ namespace OpenDocxTemplater.Tests
     public class Tests
     {
         [Fact]
-        public void CompileTemplateSync()
+        public void CompileTemplate()
         {
             string name = "SimpleWill.docx";
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/");
             FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+            string templateName = templateDocx.FullName;
+            var extractResult = OpenDocx.FieldExtractor.ExtractFields(templateName);
+            Assert.True(File.Exists(extractResult.ExtractedFields));
+            Assert.True(File.Exists(extractResult.TempTemplate));
 
             var templater = new Templater();
-            var compileResult = templater.CompileTemplate(templateDocx.FullName);
+            // warning... the file 'templateName + "obj.fields.json"' must have been created by node.js external to this test. (hack)
+            var compileResult = templater.CompileTemplate(templateName, extractResult.TempTemplate, templateName + "obj.fields.json");
             Assert.False(compileResult.HasErrors);
             Assert.True(File.Exists(compileResult.DocxGenTemplate));
-            Assert.True(File.Exists(compileResult.ExtractedLogic));
-//            WmlDocument afterAssembling = DocumentAssembler.AssembleDocument(wmlTemplate, xmldata, out returnedTemplateError);
-//            var assembledDocx = new FileInfo(Path.Combine(TestUtil.TempDir.FullName, templateDocx.Name.Replace(".docx", "-processed-by-DocumentAssembler.docx")));
-//            afterAssembling.SaveAs(assembledDocx.FullName);
 
-//            using (MemoryStream ms = new MemoryStream())
-//            {
-//                ms.Write(afterAssembling.DocumentByteArray, 0, afterAssembling.DocumentByteArray.Length);
-//                using (WordprocessingDocument wDoc = WordprocessingDocument.Open(ms, true))
-//                {
-//                    OpenXmlValidator v = new OpenXmlValidator();
-//                    //var valErrors = v.Validate(wDoc).Where(ve => !s_ExpectedErrors.Contains(ve.Description));
-
-//#if false
-//                    StringBuilder sb = new StringBuilder();
-//                    foreach (var item in valErrors.Select(r => r.Description).OrderBy(t => t).Distinct())
-//	                {
-//		                sb.Append(item).Append(Environment.NewLine);
-//	                }
-//                    string z = sb.ToString();
-//                    Console.WriteLine(z);
-//#endif
-
-//                    //Assert.Empty(valErrors);
-//                }
-//            }
-
-            //Assert.Equal(err, returnedTemplateError);
         }
+
+
+        //[Fact]
+        //public void CompileTemplateSync()
+        //{
+        //    string name = "SimpleWill.docx";
+        //    DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/");
+        //    FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+
+        //    var templater = new Templater();
+        //    //var compileResult = templater.CompileTemplate(templateDocx.FullName);
+        //    //Assert.False(compileResult.HasErrors);
+        //    //Assert.True(File.Exists(compileResult.DocxGenTemplate));
+        //    //Assert.True(File.Exists(compileResult.ExtractedLogic));
+        //    //Assert.Equal(err, returnedTemplateError);
+        //}
+
+        //[Fact]
+        //public void CompileNested()
+        //{
+        //    string name = "TestNest.docx";
+        //    DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/");
+        //    FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+
+        //    var templater = new Templater();
+        //    var compileResult = templater.CompileTemplate(templateDocx.FullName, "");
+        //    Assert.False(compileResult.HasErrors);
+        //    Assert.True(File.Exists(compileResult.DocxGenTemplate));
+        //}
+
+        //[Fact]
+        //public void FieldExtractor()
+        //{
+        //    string name = "TestNest.docx";
+        //    DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/");
+        //    FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+
+        //    var extractResult = OpenDocx.FieldExtractor.ExtractFields(templateDocx.FullName);
+        //    Assert.True(File.Exists(extractResult.ExtractedFields));
+        //    Assert.True(File.Exists(extractResult.TempTemplate));
+        //}
+
+        //[Fact]
+        //public void FieldExtractor2()
+        //{
+        //    string name = "TestNestNoCC.docx";
+        //    DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/");
+        //    FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+
+        //    var extractResult = OpenDocx.FieldExtractor.ExtractFields(templateDocx.FullName);
+        //    Assert.True(File.Exists(extractResult.ExtractedFields));
+        //    Assert.True(File.Exists(extractResult.TempTemplate));
+        //}
+
     }
 }

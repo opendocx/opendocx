@@ -19,6 +19,7 @@ utility/*/obj/
 *-assembled.docx
 *.asmdata.xml
 *.js.bak
+*.cs.bak
 
 # 
 OpenDocx.Templater.Tests/bin/Debug/

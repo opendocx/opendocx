@@ -5,6 +5,7 @@
 *-assembled.docx
 *.asmdata.xml
 *.js.bak
+*.cs.bak
 
 # Logs
 logs
