@@ -1,6 +1,6 @@
 {
   "name": "opendocx-node",
-  "version": "0.3.3-alpha",
+  "version": "0.3.4-alpha",
   "description": "OpenDocx document assembly for Node.js",
   "main": "index.js",
   "scripts": {
@@ -32,7 +32,7 @@
     "edge-js": "^11.3.0",
     "path": "^0.12.7",
     "util": "^0.11.1",
-    "yatte": "^1.1.5-alpha"
+    "yatte": "^1.1.6-alpha"
   },
   "devDependencies": {
     "mocha": "^5.2.0"
