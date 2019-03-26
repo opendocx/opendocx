@@ -52,6 +52,28 @@ describe('Assembling documents from DOCX templates', function() {
         const validation = await templater.validateDocument({documentFile: result.Document});
         assert.ok(!validation.HasErrors, validation.ErrorList);
     })
+    it('should assemble (without errors) a document based on the EngagementLetterSimplified.docx template', async function() {
+        const templatePath = testUtil.GetTemplatePath('LetterSimplified.docx');
+        const evaluator = await openDocx.compileDocx(templatePath);
+        const data = {
+            'EngagementDate': '5 Jan 2019',
+            'LawFirm': 'Baker & Bleek',
+            'ClientFirstName': 'John',
+            'ClientMiddleName': 'Jacob',
+            'ClientLastName': 'Smith',
+            'SpouseFirstName': 'Jane',
+            'SpouseMiddleName': 'Jackie',
+            'SpouseLastName': 'Jingleheimer',
+            'Fee': '500.00',
+            'DeedFee': '50.00',
+            'ClientState': 'California',
+        };
+        let result = await openDocx.assembleDocx(templatePath, data, testUtil.FileNameAppend(templatePath, '-assembled'));
+        assert.equal(result.HasErrors, false);
+        const validation = await templater.validateDocument({documentFile: result.Document});
+        assert.ok(!validation.HasErrors, validation.ErrorList);
+    })
+
 })
 
 const SimpleWillDemoContext = {

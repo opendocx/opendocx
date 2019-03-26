@@ -38,8 +38,23 @@ exports.define = function (ident, expr) {
     if (value === null || typeof value === 'undefined') {
         xmlBuilder.push(`<${ident}/>`);
     } else {
+        if (typeof value === 'string') {
+            value = escapeXml(value);
+        }
         xmlBuilder.push(`<${ident}>${value}</${ident}>`);
     }
+}
+
+const escapeXml = function (str) {
+    return str.replace(/[<>&'"]/g, function (c) {
+        switch (c) {
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '&': return '&amp;';
+            case '\'': return '&apos;';
+            case '"': return '&quot;';
+        }
+    });
 }
 
 exports.beginCondition = function (ident, expr, persist = true) {

@@ -12,6 +12,7 @@ Email: lowell@opendocx.com
 using System;
 using System.Threading.Tasks;
 using System.IO;
+using System.Xml;
 using System.Xml.Linq;
 using OpenXmlPowerTools;
 
@@ -41,7 +42,15 @@ namespace OpenDocx
         {
             using (var xmlData = new StringReader((string)input.xmlData))
             {
-                return AssembleDocument((string)input.templateFile, xmlData, (string)input.documentFile);
+                try
+                {
+                    return AssembleDocument((string)input.templateFile, xmlData, (string)input.documentFile);
+                }
+                catch (XmlException e)
+                {
+                    e.Data.Add("xml", (string)input.xmlData);
+                    throw e;
+                }
             }
         }
 
