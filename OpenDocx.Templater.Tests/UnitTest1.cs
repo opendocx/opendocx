@@ -21,9 +21,12 @@ namespace OpenDocxTemplater.Tests
         public void CompileTemplate()
         {
             string name = "SimpleWill.docx";
-            DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/");
+            DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
             FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
-            string templateName = templateDocx.FullName;
+            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
+            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, name));
+            string templateName = outputDocx.FullName;
+            templateDocx.CopyTo(templateName, true);
             var extractResult = OpenDocx.FieldExtractor.ExtractFields(templateName);
             Assert.True(File.Exists(extractResult.ExtractedFields));
             Assert.True(File.Exists(extractResult.TempTemplate));

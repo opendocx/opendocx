@@ -6,7 +6,8 @@
 *.asmdata.xml
 *.js.bak
 *.cs.bak
-test/history/
+test/history/*
+test/templates/Engagement*
 
 # Logs
 logs

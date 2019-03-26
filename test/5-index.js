@@ -76,6 +76,17 @@ const redundant_if_logic_tree = [
     ]
 }
 ];
+/*
+inferred from redundant_if_logic_tree:
+relevant:
+    x: true
+    adjective: x
+    name: true
+required:
+    x: false
+    adjective: x
+    name: true
+*/
 
 const TestNestLogicTree = [
     {

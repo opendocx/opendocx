@@ -4,6 +4,8 @@
 */obj/
 utility/*/bin/
 utility/*/obj/
+test/history/*
+test/templates/Engagement*
 # subdirectories of /bin/... satellite assemblies for various localized resources
 */bin/Debug/netcoreapp2.0/*/
 */bin/Debug/netstandard2.0/*/
@@ -24,3 +26,4 @@ test/history/
 
 # 
 OpenDocx.Templater.Tests/bin/Debug/
+OpenDocx.Converter/*
