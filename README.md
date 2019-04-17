@@ -19,14 +19,14 @@ Template markup is accomplished using "fields" to describe how the document cont
 
 When using Word DOCX files as templates, fields are placed inside Word content controls. Inside the content control, a field is visually delimited with square brackets.  This contrasts to companion package [Yatte](https://github.com/opendocx/yatte), used for assembly of plain text, where curly braces take the place of the content controls. Inside Yatte's curly braces, the syntax is identical to what you have in OpenDocx.
 
-### **Content** fields cause text to be added (merged) into the document.
+#### _Content_ fields cause text to be added (merged) into the document.
 ```
 [First] [Last]
 ```
 
 Content fields can contain either simple identfiers or expressions. Expressions use a subset of standard JavaScript syntax, and identifiers in those expressions can refer to any type of JavaScript construct: variables, objects, functions, etc..
 
-### **If** fields cause a portion of the document to be included (or excluded) based on logical conditions.
+#### _if_ fields cause a portion of the document to be included (or excluded) based on logical conditions.
 ```
 [First] [if Middle][Middle] [endif][Last]
 ```
@@ -35,7 +35,7 @@ An _if_ field contains an expression that is evaluated for purposes of determini
 
 If fields can also include alternatives ("else") or chains of alternatives ("elseif").
 
-### **List** fields cause a portion of the document to be repeated as many times as is dictated by the data provided by the caller. Lists can also be nested as deeply as necessary.
+#### _list_ fields cause a portion of the document to be repeated as many times as is dictated by the data provided by the caller. Lists can also be nested as deeply as necessary.
 ```
 My beneficiaries are:
 [list beneficiaries]
@@ -80,7 +80,7 @@ Prior Art
 
 * OpenDocx uses [Open-Xml-Power-Tools](https://github.com/EricWhiteDev/Open-Xml-PowerTools) for 100% reliable manipulation of DOCX files. Special thanks to Eric White, maintainer of that project, for inspiration and suggestions during the formative stages of this one.
 
-* [docxtemplater](https://docxtemplater.com/) served as an exemplar of node.js-based document assembly. In particular, its author was instrumental in extracting...
+* [docxtemplater](https://docxtemplater.com/) served as an exemplar of node.js-based document assembly. In particular, this project put me onto...
 
 * [angular-expressions](https://github.com/peerigon/angular-expressions#readme) (derived from [Angular](https://angular.io/)) provdides OpenDocx' flexible ability to use data from any JavaScript context.
 
