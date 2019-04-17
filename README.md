@@ -17,21 +17,55 @@ Templates
 
 Template markup is accomplished using "fields" to describe how the document content and structure should be modified when a document is being assembled. OpenDocx currently supports three types of fields: Content, If, and List. More samples (and possibly additional types of fields!) are coming soon.
 
-When using Word DOCX files as templates, fields are placed inside Word content controls. Inside the content control, a field is visually delimited with square brackets.  This contrasts to companion package [Yatte](https://github.com/opendocx/yatte), used for assembly of plain text, where curly braces take the place of the content controls. Inside Yatte's curly braces, the syntax is identical to what you have in OpenDocx.
+When using Word DOCX files as templates, fields are placed inside Word _content controls_. Inside a content control, a field is visually delimited with square brackets. In the example screen shots below, different types of fields are shown in different colors. Such formatting is for illustration and convenience only, and is not required.
 
-#### _Content_ fields cause text to be added (merged) into the document.
-```
-[First] [Last]
-```
+### _Content_ fields
 
-Content fields can contain either simple identfiers or expressions. Expressions use a subset of standard JavaScript syntax, and identifiers in those expressions can refer to any type of JavaScript construct: variables, objects, functions, etc..
+_Content_ fields cause text to be added (merged) into the document:
 
-#### _if_ fields cause a portion of the document to be included (or excluded) based on logical conditions.
+<img src="./doc/img/ss_content01.png" alt="screen" title="Screen shot illustrating Content fields" style="height:50%;width:50%">
+
+Content fields contain [expressions](https://docs.angularjs.org/guide/expression) that are evaluated against the data supplied to the assembly process (known as the "data context") to produce text to be merged into the document at that point. In the above example, the data context contains an object named Testator, and that object has (at least) 4 string properties named Name, City, County and State.
+If an expression cannot be resolved to a value, OpenDocx will instead merge the expression itself, surrounded in square brackets, as an indication that the required data was not provided.
+
+In short, a content field evaluates whatever expression is in the field and merges the resulting text into the document.
+
+#### Filters
+
+Expressions (whether in OpenDocx fields, or fields in plain text templates in [Yatte](https://github.com/opendocx/yatte)) can optionally include _filters_, which allow values to be modified before they are merged. Filters are defined for:
+
+* Formatting text as **upper** case, **lower** case, **titlecaps** (each word capitalized), and **initcap** (first word capitalized):
+  
+  <img src="./doc/img/ss_content_filter01.png" alt="screen" title="Screen shot illustrating text filter" style="height:50%;width:50%">
+
+* Formatting **date** values (using tokens defined by [date-fns](https://date-fns.org/v1.30.1/docs/format)):
+  
+  <img src="./doc/img/ss_content_filter02.png" alt="screen" title="Screen shot illustrating date filters" style="height:50%;width:50%">
+
+* Formatting **number** values (using tokens defined by [Numeral.js](https://numeraljs.com/#format))
+
+* Formatting true/false values using the **tf** filter
+
+* Formatting missing values using the **else** filter:
+  
+  <img src="./doc/img/ss_content_filter03.png" alt="screen" title="Screen shot illustrating date filters" style="height:50%;width:50%">
+
+#### Alternate field syntax
+
+Screen shots in this document show fields embedded in Word content controls. An alternate syntax is also available, where fields can be embedded in the regular flow of text in Word:
+
+<img src="./doc/img/ss_content02.png" alt="screen" title="Screen shot illustrating Content fields" style="height:50%;width:50%">
+
+This may be useful if the environment in which you edit templates makes it difficult to use Word content controls. This alternate syntax matches the way fields are delimited in [Yatte](https://github.com/opendocx/yatte)'s plain text templates: in essence, the curly braces play the part of the Word content control, and inside that, the square brackets identify the content as a Yatte field.
+
+### _if_ fields
+
+**if** fields cause a portion of the document to be included (or excluded) based on logical conditions.
 ```
 [First] [if Middle][Middle] [endif][Last]
 ```
 
-An _if_ field contains an expression that is evaluated for purposes of determining whether to include the text between _if_ and _endif_.  If this expression evaluates to a true (or truthy) value, the text between the fields is included; otherwise it is excluded from the assembled text.
+An **if** field contains an expression that is evaluated for purposes of determining whether to include the text between _if_ and _endif_.  If this expression evaluates to a true (or [truthy](https://j11y.io/javascript/truthy-falsey/)) value, the text between the fields is included; otherwise it is excluded from the assembled text.
 
 If fields can also include alternatives ("else") or chains of alternatives ("elseif").
 
