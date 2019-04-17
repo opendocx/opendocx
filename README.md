@@ -19,28 +19,28 @@ Template markup is accomplished using "fields" to describe how the document cont
 
 When using Word DOCX files as templates, fields are placed inside Word content controls. Inside the content control, a field is visually delimited with square brackets.  This contrasts to companion package [Yatte](https://github.com/opendocx/yatte), used for assembly of plain text, where curly braces take the place of the content controls. Inside Yatte's curly braces, the syntax is identical to what you have in OpenDocx.
 
-**Content** fields cause text to be added (merged) into the document.
+### **Content** fields cause text to be added (merged) into the document.
 ```
-{[First]} {[Last]}
+[First] [Last]
 ```
 
 Content fields can contain either simple identfiers or expressions. Expressions use a subset of standard JavaScript syntax, and identifiers in those expressions can refer to any type of JavaScript construct: variables, objects, functions, etc..
 
-**If** fields cause a portion of the document to be included (or excluded) based on logical conditions.
+### **If** fields cause a portion of the document to be included (or excluded) based on logical conditions.
 ```
-{[First]} {[if Middle]}{[Middle]} {[endif]}{[Last]}
+[First] [if Middle][Middle] [endif][Last]
 ```
 
 An _if_ field contains an expression that is evaluated for purposes of determining whether to include the text between _if_ and _endif_.  If this expression evaluates to a true (or truthy) value, the text between the fields is included; otherwise it is excluded from the assembled text.
 
 If fields can also include alternatives ("else") or chains of alternatives ("elseif").
 
-**List** fields cause a portion of the document to be repeated as many times as is dictated by the data provided by the caller. Lists can also be nested as deeply as necessary.
+### **List** fields cause a portion of the document to be repeated as many times as is dictated by the data provided by the caller. Lists can also be nested as deeply as necessary.
 ```
 My beneficiaries are:
-{[list beneficiaries]}
-* {[Name]}, currently of {[Address]}
-{[endlist]}
+[list beneficiaries]
+* [Name], currently of [Address]
+[endlist]
 ```
 
 As with _if_ fields, the _list_ field contains an expression – "beneficiaries" in the example above. However, for _list_ fields, this expression is expected to evaluate to a list of items.  (Specifically, in JavaScript parlance, it must evaluate to any _iterable_ – often, but not necessarily, an array.)  When this expression is evaluated, the resulting list of values is kept in temporary memory and is used to determine both how many repetitions of the template content are necessary, and then for each repetition, that item in the array (or iterable) serves as the data context for all expressions evaluated until the _endlist_ field is reached.
