@@ -48,13 +48,13 @@ Expressions (whether in OpenDocx fields, or fields in plain text templates in [Y
 
 * Formatting missing values using the **else** filter:
   
-  <img src="./doc/img/ss_content_filter03.png" alt="screen" title="Screen shot illustrating date filters" style="height:50%;width:50%">
+  <img src="./doc/img/ss_content_filter03.png" alt="screen" title="Screen shot illustrating else filter" style="height:50%;width:50%">
 
 #### Alternate field syntax
 
 Screen shots in this document show fields embedded in Word content controls. An alternate syntax is also available, where fields can be embedded in the regular flow of text in Word:
 
-<img src="./doc/img/ss_content02.png" alt="screen" title="Screen shot illustrating Content fields" style="height:50%;width:50%">
+<img src="./doc/img/ss_content02.png" alt="screen" title="Screen shot illustrating alternate field embedding" style="height:50%;width:50%">
 
 This may be useful if the environment in which you edit templates makes it difficult to use Word content controls. This alternate syntax matches the way fields are delimited in [Yatte](https://github.com/opendocx/yatte)'s plain text templates: in essence, the curly braces play the part of the Word content control, and inside that, the square brackets identify the content as a Yatte field.
 
