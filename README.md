@@ -1,11 +1,11 @@
 opendocx-node
 =============
 
-**Document and text assembly using [OpenDocx](https://github.com/opendocx/opendocx) for Node.js applications.**
+**[OpenDocx](https://github.com/opendocx/opendocx) document assembly for Node.js applications.**
 
-This package is still very much experimental in nature. If it interests you, please try it out and share your feedback.
+This package is still somewhat experimental in nature. If it interests you, please try it out and share your feedback.
 
-opendocx-node facilitates "document assembly": a template-based approach to automatically generating documents.  At this point, templates are expected to either be DOCX files (on disk) or plain text strings.  The same set of template features can be applied to either kind of template.
+opendocx-node facilitates "document assembly": a template-based approach to automatically generating documents.  At this point, templates are expected to be Microsoft Word DOCX files (on disk).  Plain text templates (with basically an identical feature set) can also be assembled using the companion package [Yatte](https://github.com/opendocx/yatte), from which OpenDocx derives much of its functionality.
 
 Installation
 ------------
@@ -15,49 +15,81 @@ Installation
 Templates
 ---------
 
-Template markup is accomplished using "fields" to describe how the document content and structure should be modified when documents are being assembled. OpenDocx currently supports three types of fields: Content, Conditional, and Repeat. Simples (and additional types of fields!) are coming soon.
+Template markup is accomplished using "fields" to describe how the document content and structure should be modified when a document is being assembled. OpenDocx currently supports three types of fields: Content, If, and List. More samples (and possibly additional types of fields!) are coming soon.
 
-When using Word DOCX files as templates, fields are placed inside Word content controls. Inside the content control, a field is visually delimited with square brackets.
-
-When assembling plain text, curly braces take the place of the content controls, but inside the curly braces, the syntax is identical to what it is in Word templates. (Including the square bracketes!) This means, templates in plain text look like {\[this]}.
+When using Word DOCX files as templates, fields are placed inside Word content controls. Inside the content control, a field is visually delimited with square brackets.  This contrasts to companion package [Yatte](https://github.com/opendocx/yatte), used for assembly of plain text, where curly braces take the place of the content controls. Inside Yatte's curly braces, the syntax is identical to what you have in OpenDocx.
 
 **Content** fields cause text to be added (merged) into the document.
 ```
 {[First]} {[Last]}
 ```
 
-**Conditional** fields cause a portion of the document to be included (or excluded) based on logical conditions.
+Content fields can contain either simple identfiers or expressions. Expressions use a subset of standard JavaScript syntax, and identifiers in those expressions can refer to any type of JavaScript construct: variables, objects, functions, etc..
+
+**If** fields cause a portion of the document to be included (or excluded) based on logical conditions.
 ```
 {[First]} {[if Middle]}{[Middle]} {[endif]}{[Last]}
 ```
 
-Conditionals can also include alternatives ("else") or chains of alternatives ("elseif").
+An _if_ field contains an expression that is evaluated for purposes of determining whether to include the text between _if_ and _endif_.  If this expression evaluates to a true (or truthy) value, the text between the fields is included; otherwise it is excluded from the assembled text.
 
-**Repeat** fields cause text to be repeated as many times as is dictated by the data you provide to assemble a document. Repeats can be nested as deeply as necessary.
+If fields can also include alternatives ("else") or chains of alternatives ("elseif").
+
+**List** fields cause a portion of the document to be repeated as many times as is dictated by the data provided by the caller. Lists can also be nested as deeply as necessary.
+```
+My beneficiaries are:
+{[list beneficiaries]}
+* {[Name]}, currently of {[Address]}
+{[endlist]}
+```
+
+As with _if_ fields, the _list_ field contains an expression – "beneficiaries" in the example above. However, for _list_ fields, this expression is expected to evaluate to a list of items.  (Specifically, in JavaScript parlance, it must evaluate to any _iterable_ – often, but not necessarily, an array.)  When this expression is evaluated, the resulting list of values is kept in temporary memory and is used to determine both how many repetitions of the template content are necessary, and then for each repetition, that item in the array (or iterable) serves as the data context for all expressions evaluated until the _endlist_ field is reached.
 
 Usage
 -----
 
-opendocx-node exposes two methods: compileDocx() and assembleDocx(). Both are asynchronous -- that is, they return a promise rather than performing synchronously.
+opendocx-node's public API includes two methods: compileDocx() and assembleDocx(). Both are asynchronous -- that is, they return a promise rather than performing synchronously.
 
 ```javascript
 async function compileDocx(templatePath)
 ```
 compileDocx() is used to "compile" and register a template with the system. This pre-processes the template, extracting template logic into an external .js file, analyzing it for errors, and restructuring it to optimize for performance when generating documents.
 
+CompileDocx should ideally be called (once) prior to calling assembleDocx for the same template. (Ideally, compileDocx should be called whenever a new version of a template is first put into service.)
+
 ```javascript
 async function assembleDocx(templatePath, data, outputFile)
 ```
-As with yatte (which shares a sommon templating engine with opendocx), data is supplied to assembleDocx as a JavaScript object:
+As with yatte, data is supplied to assembleDocx as a JavaScript object.
 
 ```javascript
-const yatte = require('yatte');
+const openDocx = require("opendocx-node");
 const assert = require('assert');
 
-const template = "{[First]} {[if Middle]}{[Middle]} {[endif]}{[Last]}";
-const data = {First: "John", Last: "Smith"};
-const result = yatte.assembleText(template, data);
-assert.equal(result, "John Smith");
+const templatePath = 'SimpleWill.docx';
+const data = {FirstName: "John", LastName: "Smith", ...};
+const result = await openDocx.assembleDocx(templatePath, data, 'assembled.docx');
+assert(exists(result.Document))
+assert(!result.HasErrors);
 ```
 
+The implementation checks to make sure the files generated by compileDocx() exist on disk, and if they do not, it calls compileDocx automically prior to attempting assembly. However, it is still strongly suggested to to always call compileDocx any time a new version of a template is put into service, to ensure those files are up to date and version-matched to the template.
 
+Prior Art
+---------
+
+* OpenDocx uses [Open-Xml-Power-Tools](https://github.com/EricWhiteDev/Open-Xml-PowerTools) for 100% reliable manipulation of DOCX files. Special thanks to Eric White, maintainer of that project, for inspiration and suggestions during the formative stages of this one.
+
+* [docxtemplater](https://docxtemplater.com/) served as an exemplar of node.js-based document assembly. In particular, its author was instrumental in extracting...
+
+* [angular-expressions](https://github.com/peerigon/angular-expressions#readme) (derived from [Angular](https://angular.io/)) provdides OpenDocx' flexible ability to use data from any JavaScript context.
+
+* OpenDocx derived inspiration for its field syntax from the excellent JavaSript templating engines...
+  * [Dust.js](https://www.dustjs.com/)
+  * [Swig](http://node-swig.github.io/swig-templates/)
+  * [Nunjucks](https://mozilla.github.io/nunjucks/)
+
+Sponsors
+--------
+
+Development of OpenDocx was made possible through the sponsorship of [REAL Automators, Inc.](https://realautomators.com/).
