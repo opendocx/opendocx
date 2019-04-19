@@ -1,7 +1,6 @@
 const openDocx = require("../index");
 const templater = require('../docx-templater');
 const assert = require('assert');
-const { TestHelperTypes } = require('yatte');
 const testUtil = require('./test-utils');
 
 describe('Assembling documents from DOCX templates', function() {
@@ -9,9 +8,7 @@ describe('Assembling documents from DOCX templates', function() {
         const templatePath = testUtil.GetTemplatePath('SimpleWill.docx');
         //const compileResult = await openDocx.compileDocx(templatePath);
         const data = SimpleWillDemoContext;
-        // temporarily/experimental: simulate schema "smartening" to be performed by Knackly app engine, based on information in Types
-        TestHelperTypes.estate_plan(data);
-        // now assemble the document against this "smart" data context
+        // now assemble the document against this data context
         let result = await openDocx.assembleDocx(templatePath, data, testUtil.FileNameAppend(templatePath, '-assembled'));
         assert.equal(result.HasErrors, false);
         const validation = await templater.validateDocument({documentFile: result.Document});
@@ -20,9 +17,7 @@ describe('Assembling documents from DOCX templates', function() {
     it('should assemble (without errors) a document based on the Lists.docx template', async function() {
         const templatePath = testUtil.GetTemplatePath('Lists.docx');
         const compileResult = await openDocx.compileDocx(templatePath);
-        const data = {Children:[{Name:'Greg',Birthdate:'1954-09-30'},{Name:'Marcia',Birthdate:'1956-08-05'},{Name:'Peter',Birthdate:'1957-11-07'},{Name:'Jan',Birthdate:'1958-04-29'},{Name:'Bobby',Birthdate:'1960-12-19'},{Name:'Cindy',Birthdate:'1961-08-14'}]};
-        // convert date strings into date objects
-        TestHelperTypes._list_of(TestHelperTypes.child, data.Children);
+        const data = BradyTestData;
 
         let result = await openDocx.assembleDocx(templatePath, data, testUtil.FileNameAppend(templatePath, '-assembled'));
         assert.equal(result.HasErrors, false);
@@ -82,10 +77,10 @@ const SimpleWillDemoContext = {
         City: "Jonestown",
         State: "Pennsylvania",
         County: "Lebanon",
-        Gender: "Male"
+        Gender: { Name: "Male", HeShe: "he", HimHer: "him", HisHer: "his", HisHers: "his" }
     },
     GoverningLaw: "Pennsylvania",
-    SigningDate: "2019-03-10",
+    SigningDate: new Date(2019, 2, 10),
     Witness1Name: "John Doe",
     Witness2Name: "Marilyn Monroe",
     NotaryCounty: "Allegheny",
@@ -95,14 +90,14 @@ const SimpleWillDemoContext = {
         City: "Philadelphia",
         State: "Pennsylvania",
         County: "Philadelphia",
-        Gender: "Female",
+        Gender: { Name: "Female", HeShe: "she", HimHer: "her", HisHer: "her", HisHers: "hers" }
     },
     BackupRepresentative: {
         Name: "Tina Turner",
         City: "Los Angeles",
         State: "California",
         County: "Los Angeles",
-        Gender: "Female",
+        Gender: { Name: "Female", HeShe: "she", HimHer: "her", HisHer: "her", HisHers: "hers" }
     },
     Beneficiaries: [
         {
@@ -134,3 +129,31 @@ const SimpleWillDemoContext = {
     ],
 };
 
+const BradyTestData = {
+    Children: [
+        {
+            Name:'Greg',
+            Birthdate:new Date(1954, 8, 30)
+        },
+        {
+            Name:'Marcia',
+            Birthdate:new Date(1956, 7, 5)
+        },
+        {
+            Name:'Peter',
+            Birthdate:new Date(1957, 10, 7)
+        },
+        {
+            Name:'Jan',
+            Birthdate:new Date(1958, 3, 29)
+        },
+        {
+            Name:'Bobby',
+            Birthdate:new Date(1960, 11, 19)
+        },
+        {
+            Name:'Cindy',
+            Birthdate:new Date(1961, 7, 14)
+        }
+    ]
+}

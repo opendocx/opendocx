@@ -2,7 +2,6 @@ const openDocx = require("../index");
 const assert = require('assert');
 const fs = require('fs');
 const evaluator = require('../docx-evaluator');
-const { TestHelperTypes } = require('yatte');
 const testUtil = require('./test-utils');
 
 describe('Generating XML data for DOCX templates (white box)', function() {
@@ -11,7 +10,7 @@ describe('Generating XML data for DOCX templates (white box)', function() {
         let jsFile = templatePath + '.js';
         // only re-compile if necessary -- should only happen if this test file is being run independently of others
         if (!fs.existsSync(jsFile)) {
-            const result = await openDocx.compileDocx(template);
+            const result = await openDocx.compileDocx(templatePath);
             assert.equal(result.HasErrors, false);
             assert.equal(fs.existsSync(result.ExtractedLogic), true);
             assert.equal(fs.existsSync(result.DocxGenTemplate), true);
@@ -25,20 +24,18 @@ describe('Generating XML data for DOCX templates (white box)', function() {
         let jsFile = templatePath + '.js';
         // only re-compile if necessary -- should only happen if this test file is being run independently of others
         if (!fs.existsSync(jsFile)) {
-            const result = await openDocx.compileDocx(template);
+            const result = await openDocx.compileDocx(templatePath);
             assert.equal(result.HasErrors, false);
             assert.equal(fs.existsSync(result.ExtractedLogic), true);
             assert.equal(fs.existsSync(result.DocxGenTemplate), true);
             jsFile = result.ExtractedLogic;
         }
         const data = SimpleWillDemoContext;
-        // simulate schema "smartening" to be performed by app engine, based on information in Types
-        TestHelperTypes.estate_plan(data);
-        // now evaluate the helper against this "smart" data context, to test its functionality
+        // now evaluate the helper against this data context, to test its functionality
         const str = evaluator.assembleXml(data, jsFile);
         fs.writeFileSync(templatePath + '.asmdata.xml', str);
         assert.equal(str,
-            '<?xml version="1.0"?><_odx><a>John Smith</a><b>Jonestown</b><c>Lebanon</c><d>Pennsylvania</d><e>Kim Johnston</e><f>Philadelphia</f><g>Philadelphia</g><h>Pennsylvania</h><i/><n>true</n><j>Tina Turner</j><k>Los Angeles</k><l>Los Angeles</l><m>California</m><v><v0><o>1</o><p>st</p><q>Kelly Smith</q><r>1234 Anystreet, Allentown, PA</r><s>Daughter</s><t>5555</t><u>My cat.</u></v0><v0><o>2</o><p>nd</p><q>John Smith Jr.</q><r>54321 Geronimo, Jonestown, PA</r><s>Son</s><t>4444</t><u>My house.</u></v0><v0><o>3</o><p>rd</p><q>Diane Kennedy</q><r>Unknown</r><s>Mistress</s><t/><u>My misguided affection.</u></v0><v0><o>4</o><p>th</p><q>Tim Billingsly</q><r>Boulder, CO</r><s>cat</s><t/><u>Everything else.</u></v0></v><w>Pennsylvania</w><x>10th day of March, 2019</x><y>him</y><z>his</z><A>John Doe</A><B>Marilyn Monroe</B><C>PENNSYLVANIA</C><D>ALLEGHENY</D></_odx>');
+            '<?xml version="1.0"?><_odx><a>John Smith</a><b>Jonestown</b><c>Lebanon</c><d>Pennsylvania</d><e>Kim Johnston</e><f>Philadelphia</f><g>Philadelphia</g><h>Pennsylvania</h><i>she</i><n>true</n><j>Tina Turner</j><k>Los Angeles</k><l>Los Angeles</l><m>California</m><v><v0><o>1</o><p>st</p><q>Kelly Smith</q><r>1234 Anystreet, Allentown, PA</r><s>Daughter</s><t>5555</t><u>My cat.</u></v0><v0><o>2</o><p>nd</p><q>John Smith Jr.</q><r>54321 Geronimo, Jonestown, PA</r><s>Son</s><t>4444</t><u>My house.</u></v0><v0><o>3</o><p>rd</p><q>Diane Kennedy</q><r>Unknown</r><s>Mistress</s><t/><u>My misguided affection.</u></v0><v0><o>4</o><p>th</p><q>Tim Billingsly</q><r>Boulder, CO</r><s>cat</s><t/><u>Everything else.</u></v0></v><w>Pennsylvania</w><x>10th day of March, 2019</x><y>him</y><z>his</z><A>John Doe</A><B>Marilyn Monroe</B><C>PENNSYLVANIA</C><D>ALLEGHENY</D></_odx>');
     });
     it('list testing', async function() {
         const templatePath = testUtil.GetTemplatePath('Lists.docx');
@@ -46,10 +43,8 @@ describe('Generating XML data for DOCX templates (white box)', function() {
         assert.equal(result.HasErrors, false);
         const jsFile = result.ExtractedLogic;
         const compiledTemplate = result.DocxGenTemplate;
-        const data = {Children:[{Name:'Greg',Birthdate:'1954-09-30'},{Name:'Marcia',Birthdate:'1956-08-05'},{Name:'Peter',Birthdate:'1957-11-07'},{Name:'Jan',Birthdate:'1958-04-29'},{Name:'Bobby',Birthdate:'1960-12-19'},{Name:'Cindy',Birthdate:'1961-08-14'}]};
-        // simulate schema "smartening" to be performed by app engine, based on information in Types
-        TestHelperTypes._list_of(TestHelperTypes.child, data.Children);
-        // now evaluate the helper against this "smart" data context, to test its functionality
+        const data = BradyTestData;
+        // now evaluate the helper against this data context, to test its functionality
         const str = evaluator.assembleXml(data, jsFile);
         fs.writeFileSync(templatePath + '.asmdata.xml', str);
         // note: lists do not (currently) get optimized in the XML -- every time a template repeats through a list, another copy of the list is stored in the XML. This is because I haven't done the work yet to optimize that part.
@@ -65,10 +60,10 @@ const SimpleWillDemoContext = {
         City: "Jonestown",
         State: "Pennsylvania",
         County: "Lebanon",
-        Gender: "Male"
+        Gender: { Name: "Male", HeShe: "he", HimHer: "him", HisHer: "his", HisHers: "his" }
     },
     GoverningLaw: "Pennsylvania",
-    SigningDate: "2019-03-10",
+    SigningDate: new Date(2019, 2, 10),
     Witness1Name: "John Doe",
     Witness2Name: "Marilyn Monroe",
     NotaryCounty: "Allegheny",
@@ -78,14 +73,14 @@ const SimpleWillDemoContext = {
         City: "Philadelphia",
         State: "Pennsylvania",
         County: "Philadelphia",
-        Gender: "Female",
+        Gender: { Name: "Female", HeShe: "she", HimHer: "her", HisHer: "her", HisHers: "hers" }
     },
     BackupRepresentative: {
         Name: "Tina Turner",
         City: "Los Angeles",
         State: "California",
         County: "Los Angeles",
-        Gender: "Female",
+        Gender: { Name: "Female", HeShe: "she", HimHer: "her", HisHer: "her", HisHers: "hers" }
     },
     Beneficiaries: [
         {
@@ -116,3 +111,32 @@ const SimpleWillDemoContext = {
         },
     ],
 };
+
+const BradyTestData = {
+    Children: [
+        {
+            Name:'Greg',
+            Birthdate:new Date(1954, 8, 30)
+        },
+        {
+            Name:'Marcia',
+            Birthdate:new Date(1956, 7, 5)
+        },
+        {
+            Name:'Peter',
+            Birthdate:new Date(1957, 10, 7)
+        },
+        {
+            Name:'Jan',
+            Birthdate:new Date(1958, 3, 29)
+        },
+        {
+            Name:'Bobby',
+            Birthdate:new Date(1960, 11, 19)
+        },
+        {
+            Name:'Cindy',
+            Birthdate:new Date(1961, 7, 14)
+        }
+    ]
+}

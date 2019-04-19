@@ -14,7 +14,11 @@ exports.assembleXml = function (context, templateJsFile, joinstr = "") {
 }
 
 exports.beginObject = function (ident, objContext) {
-    contextStack.pushObject(ident, objContext);
+    if (contextStack.empty()) {
+        contextStack.pushGlobal(objContext, ident);
+    } else {
+        contextStack.pushObject(ident, objContext);
+    }
     xmlBuilder.push(`<${contextStack.peekName()}>`);
 }
 
@@ -33,7 +37,7 @@ exports.define = function (ident, expr) {
     }
 
     const evaluator = compileExpr(expr); // these are cached so this should be fast
-    let value = evaluator(frame.context); // we need to make sure this is memoized to avoid unnecessary re-evaluation
+    let value = frame.evaluate(evaluator); // we need to make sure this is memoized to avoid unnecessary re-evaluation
 
     if (value === null || typeof value === 'undefined') {
         xmlBuilder.push(`<${ident}/>`);
@@ -66,7 +70,7 @@ exports.beginCondition = function (ident, expr, persist = true) {
         throw `Internal error: cannot define a condition on a ${frame.type} context`;
     }
     const evaluator = compileExpr(expr); // these are cached so this should be fast
-    const value = evaluator(frame.context); // we need to make sure this is memoized to avoid unnecessary re-evaluation
+    const value = frame.evaluate(evaluator); // we need to make sure this is memoized to avoid unnecessary re-evaluation
     const bValue = ContextStack.IsTruthy(value);
     if (persist) {
         xmlBuilder.push(`<${ident}>${bValue?'true':'false'}</${ident}>`);
@@ -77,7 +81,7 @@ exports.beginCondition = function (ident, expr, persist = true) {
 exports.beginList = function (ident, expr) {
     const frame = contextStack.peek();
     const evaluator = compileExpr(expr); // these are cached so this should be fast
-    let iterable = evaluator(frame.context); // we need to make sure this is memoized to avoid unnecessary re-evaluation
+    let iterable = frame.evaluate(evaluator); // we need to make sure this is memoized to avoid unnecessary re-evaluation
     const indices = contextStack.pushList(ident, iterable);
     xmlBuilder.push(`<${ident}>`);
     return indices;
