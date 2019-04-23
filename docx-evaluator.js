@@ -39,7 +39,7 @@ exports.define = function (ident, expr) {
     const evaluator = compileExpr(expr); // these are cached so this should be fast
     let value = frame.evaluate(evaluator); // we need to make sure this is memoized to avoid unnecessary re-evaluation
 
-    if (value === null || typeof value === 'undefined') {
+    if (value === null || value === '' || typeof value === 'undefined') {
         xmlBuilder.push(`<${ident}/>`);
     } else {
         if (typeof value === 'string') {

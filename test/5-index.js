@@ -118,6 +118,15 @@ const TestNestLogicTree = [
                             constant: false
                         },
                     },
+                    {
+                        type: "Content",
+                        expr: "_punc",
+                        exprAst: {
+                            type: "Identifier",
+                            name: "_punc",
+                            constant: false
+                        },
+                    },
                 ]
             },
             {
@@ -191,6 +200,15 @@ const TestNestLogicTree = [
                                             constant: false
                                         },
                                     },
+                                    {
+                                        type: "Content",
+                                        expr: "_punc",
+                                        exprAst: {
+                                            type: "Identifier",
+                                            name: "_punc",
+                                            constant: false
+                                        },
+                                    },
                                 ]
                             },
                             {
@@ -199,6 +217,15 @@ const TestNestLogicTree = [
                                 exprAst: {
                                     type: "Identifier",
                                     name: "D",
+                                    constant: false
+                                },
+                            },
+                            {
+                                type: "Content",
+                                expr: "_punc",
+                                exprAst: {
+                                    type: "Identifier",
+                                    name: "_punc",
                                     constant: false
                                 },
                             },
@@ -241,6 +268,15 @@ const TestNestLogicTree = [
                                         exprAst: {
                                             type: "Identifier",
                                             name: "G",
+                                            constant: false
+                                        },
+                                    },
+                                    {
+                                        type: "Content",
+                                        expr: "_punc",
+                                        exprAst: {
+                                            type: "Identifier",
+                                            name: "_punc",
                                             constant: false
                                         },
                                     },

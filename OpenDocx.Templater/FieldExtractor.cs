@@ -81,7 +81,7 @@ namespace OpenDocx
         private static void PrepareTemplatePart(OpenXmlPart part, FieldAccumulator fieldAccumulator, TemplateError te)
         {
             XDocument xDoc = part.GetXDocument();
-            var xDocRoot = (XElement)IdentifyFields(xDoc.Root, fieldAccumulator, te);
+            var xDocRoot = (XElement)IdentifyAndTransformFields(xDoc.Root, fieldAccumulator, te);
             xDoc.Elements().First().ReplaceWith(xDocRoot);
             part.PutXDocument();
         }
@@ -100,7 +100,7 @@ namespace OpenDocx
             return count;
         }
 
-        private static object IdentifyFields(XNode node, FieldAccumulator fieldAccumulator, TemplateError te)
+        private static object IdentifyAndTransformFields(XNode node, FieldAccumulator fieldAccumulator, TemplateError te)
         {
             XElement element = node as XElement;
             if (element != null)
@@ -140,11 +140,11 @@ namespace OpenDocx
                         }
                         return new XElement(element.Name,
                             element.Attributes(),
-                            element.Nodes().Select(n => IdentifyFields(n, fieldAccumulator, te)));
+                            element.Nodes().Select(n => IdentifyAndTransformFields(n, fieldAccumulator, te)));
                     }
                     return new XElement(element.Name,
                         element.Attributes(),
-                        element.Nodes().Select(n => IdentifyFields(n, fieldAccumulator, te)));
+                        element.Nodes().Select(n => IdentifyAndTransformFields(n, fieldAccumulator, te)));
                 }
                 if (element.Name == W.p)
                 {
@@ -229,7 +229,7 @@ namespace OpenDocx
 
                 return new XElement(element.Name,
                     element.Attributes(),
-                    element.Nodes().Select(n => IdentifyFields(n, fieldAccumulator, te)));
+                    element.Nodes().Select(n => IdentifyAndTransformFields(n, fieldAccumulator, te)));
             }
             return node;
         }

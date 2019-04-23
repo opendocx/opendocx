@@ -35,7 +35,7 @@ describe('Generating XML data for DOCX templates (white box)', function() {
         const str = evaluator.assembleXml(data, jsFile);
         fs.writeFileSync(templatePath + '.asmdata.xml', str);
         assert.equal(str,
-            '<?xml version="1.0"?><_odx><a>John Smith</a><b>Jonestown</b><c>Lebanon</c><d>Pennsylvania</d><e>Kim Johnston</e><f>Philadelphia</f><g>Philadelphia</g><h>Pennsylvania</h><i>she</i><n>true</n><j>Tina Turner</j><k>Los Angeles</k><l>Los Angeles</l><m>California</m><v><v0><o>1</o><p>st</p><q>Kelly Smith</q><r>1234 Anystreet, Allentown, PA</r><s>Daughter</s><t>5555</t><u>My cat.</u></v0><v0><o>2</o><p>nd</p><q>John Smith Jr.</q><r>54321 Geronimo, Jonestown, PA</r><s>Son</s><t>4444</t><u>My house.</u></v0><v0><o>3</o><p>rd</p><q>Diane Kennedy</q><r>Unknown</r><s>Mistress</s><t/><u>My misguided affection.</u></v0><v0><o>4</o><p>th</p><q>Tim Billingsly</q><r>Boulder, CO</r><s>cat</s><t/><u>Everything else.</u></v0></v><w>Pennsylvania</w><x>10th day of March, 2019</x><y>him</y><z>his</z><A>John Doe</A><B>Marilyn Monroe</B><C>PENNSYLVANIA</C><D>ALLEGHENY</D></_odx>');
+            '<?xml version="1.0"?><_odx><a>John Smith</a><b>Jonestown</b><c>Lebanon</c><d>Pennsylvania</d><e>Kim Johnston</e><f>Philadelphia</f><g>Philadelphia</g><h>Pennsylvania</h><i>she</i><n>true</n><j>Tina Turner</j><k>Los Angeles</k><l>Los Angeles</l><m>California</m><v><v0><o>1</o><p>st</p><q>Kelly Smith</q><r>1234 Anystreet, Allentown, PA</r><s>Daughter</s><t>5555</t><u>My cat.</u><v1/></v0><v0><o>2</o><p>nd</p><q>John Smith Jr.</q><r>54321 Geronimo, Jonestown, PA</r><s>Son</s><t>4444</t><u>My house.</u><v1/></v0><v0><o>3</o><p>rd</p><q>Diane Kennedy</q><r>Unknown</r><s>Mistress</s><t/><u>My misguided affection.</u><v1/></v0><v0><o>4</o><p>th</p><q>Tim Billingsly</q><r>Boulder, CO</r><s>cat</s><t/><u>Everything else.</u><v1/></v0></v><w>Pennsylvania</w><x>10th day of March, 2019</x><y>him</y><z>his</z><A>John Doe</A><B>Marilyn Monroe</B><C>PENNSYLVANIA</C><D>ALLEGHENY</D></_odx>');
     });
     it('list testing', async function() {
         const templatePath = testUtil.GetTemplatePath('Lists.docx');
@@ -50,7 +50,7 @@ describe('Generating XML data for DOCX templates (white box)', function() {
         // note: lists do not (currently) get optimized in the XML -- every time a template repeats through a list, another copy of the list is stored in the XML. This is because I haven't done the work yet to optimize that part.
         // it works well enough this way, but in the future (if the XML chunks are so big they're slowing something down) we can optimize it better.
         assert.equal(str,
-            '<?xml version="1.0"?><_odx><b><b0><a>Greg</a><c>09/30/1954</c></b0><b0><a>Marcia</a><c>08/05/1956</c></b0><b0><a>Peter</a><c>11/07/1957</c></b0><b0><a>Jan</a><c>04/29/1958</c></b0><b0><a>Bobby</a><c>12/19/1960</c></b0><b0><a>Cindy</a><c>08/14/1961</c></b0></b></_odx>');
+            '<?xml version="1.0"?><_odx><b><b0><a>Greg</a><b1>, </b1></b0><b0><a>Marcia</a><b1>, </b1></b0><b0><a>Peter</a><b1>, </b1></b0><b0><a>Jan</a><b1>, </b1></b0><b0><a>Bobby</a><b1> and </b1></b0><b0><a>Cindy</a><b1/></b0></b><d><d0><a>Greg</a><c>09/30/1954</c><d1>;</d1></d0><d0><a>Marcia</a><c>08/05/1956</c><d1>;</d1></d0><d0><a>Peter</a><c>11/07/1957</c><d1>;</d1></d0><d0><a>Jan</a><c>04/29/1958</c><d1>;</d1></d0><d0><a>Bobby</a><c>12/19/1960</c><d1>; and</d1></d0><d0><a>Cindy</a><c>08/14/1961</c><d1>.</d1></d0></d></_odx>');
     });
 })
 

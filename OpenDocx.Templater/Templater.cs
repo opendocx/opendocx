@@ -502,9 +502,14 @@ namespace OpenDocx
                 if (element.Name == OD.List)
                 {
                     var listAtom = xm[element.Attribute(OD.Id).Value].atomizedExpr;
+                    var puncAtom = listAtom + "1";
                     var selector = "./" + listAtom + "/" + listAtom + "0";
+                    var puncSelector = "./" + puncAtom;
                     var startText = "<" + PA.Repeat + " "
                         + PA.Select + "=\"" + selector + "\" "
+                        + PA.Optional + "=\"true\"/>";
+                    var puncText = "<" + PA.Content + " "
+                        + PA.Select + "=\"" + puncSelector + "\" "
                         + PA.Optional + "=\"true\"/>";
                     var endText = "<" + PA.EndRepeat + "/>";
                     XElement para = element.Descendants(W.p).FirstOrDefault();
@@ -513,9 +518,24 @@ namespace OpenDocx
                         .Select(e => ContentReplacementTransform(e, xm, templateError))
                         .ToList();
                     XElement startElem = new XElement(W.r, new XElement(W.t, startText));
+                    XElement puncElem = new XElement(W.r, new XElement(W.t, puncText));
                     XElement endElem = new XElement(W.r, new XElement(W.t, endText));
                     if (para != null) // block-level list
                     {
+                        // append list punctuation to end of last paragraph of repeating content
+                        int i = repeatingContent.Count - 1;
+                        while (i >= 0)
+                        {
+                            XElement el = (XElement)repeatingContent[i];
+                            XElement lastPara = el.DescendantsAndSelf(W.p).LastOrDefault();
+                            if (lastPara != null)
+                            {
+                                lastPara.Add(CCWrap(puncElem));
+                                break;
+                            }
+                            i--;
+                        }
+                        // now prefix and suffix repeating content with repeat elements/tags
                         repeatingContent.Insert(0, CCWrap(PWrap(startElem)));
                         // repeatingContent here
                         repeatingContent.Add(CCWrap(PWrap(endElem)));
@@ -524,6 +544,7 @@ namespace OpenDocx
                     {
                         repeatingContent.Insert(0, CCWrap(startElem));
                         // repeatingContent here
+                        repeatingContent.Add(CCWrap(puncElem));
                         repeatingContent.Add(CCWrap(endElem));
                     }
                     return repeatingContent;

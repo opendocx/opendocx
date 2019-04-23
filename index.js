@@ -88,33 +88,42 @@ exports.assembleDocx = async function (templatePath, data, outputFile) {
     return result;
 }
 
-const buildFieldDictionary = function (astBody, fieldDict) {
+const buildFieldDictionary = function (astBody, fieldDict, parent = null) {
     for (const obj of astBody) {
         if (Array.isArray(obj.contentArray)) {
-            buildFieldDictionary(obj.contentArray, fieldDict);
+            buildFieldDictionary(obj.contentArray, fieldDict, obj);
         }
-        fieldDict[obj.id] = {fieldType: obj.type, atomizedExpr: (obj.expr ? atomize(obj.expr) : '') };
+        if (typeof obj.id !== 'undefined') {
+            // EndList fields are stored with the atomized expression of their matching List field, because this is used to make list punctuation work
+            fieldDict[obj.id] = {fieldType: obj.type, atomizedExpr: (obj.expr ? atomize(obj.expr) : (obj.type == OD.EndList ? atomize(parent.expr) : ''))};
+        }
     }
 }
 
 const createTemplateJsModule = function(ast) {
     const sb = ["'use strict';"];
     sb.push('exports.evaluate=function(cx,h)');
-    sb.push(serializeContextInDataJs(ast, '_odx', 'cx'));
+    sb.push(serializeContextInDataJs(ast, '_odx', 'cx', null));
     return sb.join('\n');
 }
 
-const serializeContextInDataJs = function(contentArray, id, objIdent) {
+const serializeContextInDataJs = function(contentArray, id, objIdent, parentNode) {
     return `{
 h.beginObject('${id}',${objIdent});
-${serializeContentArrayAsDataJs(contentArray)}
+${serializeContentArrayAsDataJs(contentArray, parentNode)}
 h.endObject()
 }`
 }
 
-const serializeAstNodeAsDataJs = function(astNode) {
+const serializeAstNodeAsDataJs = function(astNode, parent) {
     let atom;
-    if (astNode.expr) atom = atomize(astNode.expr);
+    if (astNode.expr) {
+        if (astNode.expr === '_punc') { // special case: list punctuation: use a customized "atom" derived from the list expression
+            atom = atomize(parent.expr) + '1'
+        } else { // regular case: atom based on expression
+            atom = atomize(astNode.expr);
+        }
+    } 
     switch (astNode.type) {
         case OD.Content:
             return `h.define('${atom}','${astNode.expr}');`
@@ -122,25 +131,25 @@ const serializeAstNodeAsDataJs = function(astNode) {
         case OD.List:
             let a0 = atom + '0';
             return `for(const ${a0} of h.beginList('${atom}', '${astNode.expr}'))
-${serializeContextInDataJs(astNode.contentArray, a0, a0)}
+${serializeContextInDataJs(astNode.contentArray, a0, a0, astNode)}
 h.endList();`
 
         case OD.If:
             return `if(h.beginCondition('${atom}','${astNode.expr}',${astNode.new}))
 {
-${serializeContentArrayAsDataJs(astNode.contentArray)}
+${serializeContentArrayAsDataJs(astNode.contentArray, astNode)}
 }`
 
         case OD.ElseIf:
             return `} else {
 if(h.beginCondition('${atom}','${astNode.expr}',${astNode.new}))
 {
-${serializeContentArrayAsDataJs(astNode.contentArray)}
+${serializeContentArrayAsDataJs(astNode.contentArray, astNode)}
 }`
 
         case OD.Else:
             return `} else {
-${serializeContentArrayAsDataJs(astNode.contentArray)}
+${serializeContentArrayAsDataJs(astNode.contentArray, astNode)}
 `
 
         default:
@@ -148,10 +157,10 @@ ${serializeContentArrayAsDataJs(astNode.contentArray)}
     }
 }
 
-const serializeContentArrayAsDataJs = function(contentArray) {
+const serializeContentArrayAsDataJs = function(contentArray, parent) {
     let sb = [];
     for (const obj of contentArray) {
-        sb.push(serializeAstNodeAsDataJs(obj));
+        sb.push(serializeAstNodeAsDataJs(obj, parent));
     }
     return sb.join('\n');
 }

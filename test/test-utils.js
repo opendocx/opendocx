@@ -16,3 +16,15 @@ exports.GetTemplatePath = function(testTemplateName) {
     }
     return templatePath;
 }
+
+exports.GetTemplateNetPath = function(testTemplateName) {
+    const dotNetTestPath = path.join(__dirname, 'history', 'dot-net-results');
+    if (!fs.existsSync(dotNetTestPath)) {
+        fs.mkdirSync(dotNetTestPath, {recursive: true} )
+    }
+    const templatePath = path.join(dotNetTestPath, testTemplateName);
+    if (!fs.existsSync(templatePath)) {
+        fs.copyFileSync(path.join(__dirname, 'templates', testTemplateName), templatePath);
+    }
+    return templatePath;
+}
