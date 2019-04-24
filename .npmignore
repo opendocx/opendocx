@@ -9,8 +9,7 @@ README.md
 /utility/
 /test/
 # subdirectories of /bin/... satellite assemblies for various localized resources
-*/bin/Debug/netcoreapp2.0/*/
-*/bin/Debug/netstandard2.0/*/
+#*/bin/Debug/netcoreapp2.0/*/ # If these are missing, edge.js fails to run on Linux
 
 # generated files
 *.docx.js
