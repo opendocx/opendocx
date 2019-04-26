@@ -1,7 +1,7 @@
 const openDocx = require("../index");
 const assert = require('assert');
 const fs = require('fs');
-const evaluator = require('../docx-evaluator');
+const XmlAssembler = require('../docx-evaluator');
 const testUtil = require('./test-utils');
 
 describe('Generating XML data for DOCX templates (white box)', function() {
@@ -16,8 +16,8 @@ describe('Generating XML data for DOCX templates (white box)', function() {
             assert.equal(fs.existsSync(result.DocxGenTemplate), true);
             jsFile = result.ExtractedLogic;
         }
-        const str = evaluator.assembleXml({}, jsFile);
-        assert.equal(str, '<?xml version="1.0"?><_odx><a/><b/><c/><d/><e/><f/><g/><h/><i/><n>false</n><v></v><w/><x/><y/><z/><A/><B/><C/><D/></_odx>');
+        const str = new XmlAssembler({}).assembleXml(jsFile);
+        assert.equal(str, '<?xml version="1.0"?><_odx><a>[Testator.Name]</a><b>[Testator.City]</b><c>[Testator.County]</c><d>[Testator.State]</d><e>[Representative.Name]</e><f>[Representative.City]</f><g>[Representative.County]</g><h>[Representative.State]</h><i>[Representative.Gender.HeShe]</i><n>false</n><v></v><w>[GoverningLaw]</w><x>[SigningDate|date:&quot;Do [day of] MMMM, YYYY&quot;]</x><y>[Testator.Gender.HimHer]</y><z>[Testator.Gender.HisHer]</z><A>[Witness1Name]</A><B>[Witness2Name]</B><C>[GoverningLaw|upper]</C><D>[NotaryCounty|upper]</D></_odx>');
     });
     it('auto-generated js function should execute against its contextHelper with a populated context', async function() {
         const templatePath = testUtil.GetTemplatePath('SimpleWill.docx');
@@ -32,10 +32,10 @@ describe('Generating XML data for DOCX templates (white box)', function() {
         }
         const data = SimpleWillDemoContext;
         // now evaluate the helper against this data context, to test its functionality
-        const str = evaluator.assembleXml(data, jsFile);
+        const str = new XmlAssembler(data).assembleXml(jsFile);
         fs.writeFileSync(templatePath + '.asmdata.xml', str);
         assert.equal(str,
-            '<?xml version="1.0"?><_odx><a>John Smith</a><b>Jonestown</b><c>Lebanon</c><d>Pennsylvania</d><e>Kim Johnston</e><f>Philadelphia</f><g>Philadelphia</g><h>Pennsylvania</h><i>she</i><n>true</n><j>Tina Turner</j><k>Los Angeles</k><l>Los Angeles</l><m>California</m><v><v0><o>1</o><p>st</p><q>Kelly Smith</q><r>1234 Anystreet, Allentown, PA</r><s>Daughter</s><t>5555</t><u>My cat.</u><v1/></v0><v0><o>2</o><p>nd</p><q>John Smith Jr.</q><r>54321 Geronimo, Jonestown, PA</r><s>Son</s><t>4444</t><u>My house.</u><v1/></v0><v0><o>3</o><p>rd</p><q>Diane Kennedy</q><r>Unknown</r><s>Mistress</s><t/><u>My misguided affection.</u><v1/></v0><v0><o>4</o><p>th</p><q>Tim Billingsly</q><r>Boulder, CO</r><s>cat</s><t/><u>Everything else.</u><v1/></v0></v><w>Pennsylvania</w><x>10th day of March, 2019</x><y>him</y><z>his</z><A>John Doe</A><B>Marilyn Monroe</B><C>PENNSYLVANIA</C><D>ALLEGHENY</D></_odx>');
+            '<?xml version="1.0"?><_odx><a>John Smith</a><b>Jonestown</b><c>Lebanon</c><d>Pennsylvania</d><e>Kim Johnston</e><f>Philadelphia</f><g>Philadelphia</g><h>Pennsylvania</h><i>she</i><n>true</n><j>Tina Turner</j><k>Los Angeles</k><l>Los Angeles</l><m>California</m><v><v0><o>1</o><p>st</p><q>Kelly Smith</q><r>1234 Anystreet, Allentown, PA</r><s>Daughter</s><t>5555</t><u>My cat.</u><v1/></v0><v0><o>2</o><p>nd</p><q>John Smith Jr.</q><r>54321 Geronimo, Jonestown, PA</r><s>Son</s><t>4444</t><u>My house.</u><v1/></v0><v0><o>3</o><p>rd</p><q>Diane Kennedy</q><r>Unknown</r><s>Mistress</s><t>[SSNLast4]</t><u>My misguided affection.</u><v1/></v0><v0><o>4</o><p>th</p><q>Tim Billingsly</q><r>Boulder, CO</r><s>cat</s><t>[SSNLast4]</t><u>Everything else.</u><v1/></v0></v><w>Pennsylvania</w><x>10th day of March, 2019</x><y>him</y><z>his</z><A>John Doe</A><B>Marilyn Monroe</B><C>PENNSYLVANIA</C><D>ALLEGHENY</D></_odx>');
     });
     it('list testing', async function() {
         const templatePath = testUtil.GetTemplatePath('Lists.docx');
@@ -45,13 +45,34 @@ describe('Generating XML data for DOCX templates (white box)', function() {
         const compiledTemplate = result.DocxGenTemplate;
         const data = BradyTestData;
         // now evaluate the helper against this data context, to test its functionality
-        const str = evaluator.assembleXml(data, jsFile);
+        const str = new XmlAssembler(data).assembleXml(jsFile);
         fs.writeFileSync(templatePath + '.asmdata.xml', str);
         // note: lists do not (currently) get optimized in the XML -- every time a template repeats through a list, another copy of the list is stored in the XML. This is because I haven't done the work yet to optimize that part.
         // it works well enough this way, but in the future (if the XML chunks are so big they're slowing something down) we can optimize it better.
         assert.equal(str,
             '<?xml version="1.0"?><_odx><b><b0><a>Greg</a><b1>, </b1></b0><b0><a>Marcia</a><b1>, </b1></b0><b0><a>Peter</a><b1>, </b1></b0><b0><a>Jan</a><b1>, </b1></b0><b0><a>Bobby</a><b1> and </b1></b0><b0><a>Cindy</a><b1/></b0></b><d><d0><a>Greg</a><c>09/30/1954</c><d1>;</d1></d0><d0><a>Marcia</a><c>08/05/1956</c><d1>;</d1></d0><d0><a>Peter</a><c>11/07/1957</c><d1>;</d1></d0><d0><a>Jan</a><c>04/29/1958</c><d1>;</d1></d0><d0><a>Bobby</a><c>12/19/1960</c><d1>; and</d1></d0><d0><a>Cindy</a><c>08/14/1961</c><d1>.</d1></d0></d></_odx>');
     });
+    it('should assemble data XML that includes unanswered placeholders', async function() {
+        const templatePath = testUtil.GetTemplatePath('SimpleWill2.docx');
+        const result = await openDocx.compileDocx(templatePath, false);
+        assert.equal(result.HasErrors, false);
+        const jsFile = result.ExtractedLogic;
+        //const compiledTemplate = result.DocxGenTemplate;
+        const data = {
+            GoverningLaw: "Utah",
+            SigningDate: new Date(2019, 3, 26),
+        };
+        // now evaluate the helper against this data context, to test its functionality
+        const str = new XmlAssembler(data).assembleXml(jsFile);
+        fs.writeFileSync(templatePath + '.asmdata.xml', str);
+        assert.equal(str,
+            '<?xml version="1.0"?><_odx><a>[Testator.Name]</a><b>[Testator.City]</b><c>[Testator.County]</c><d>[Testator.State]</d><e>[Representative.Name]</e><f>[Representative.City]</f><g>[Representative.County]</g><h>[Representative.State]</h><i>[Representative.Gender.HeShe]</i><n>false</n><v></v><w>Utah</w><x>26th day of April, 2019</x><y>[Testator.Gender.HimHer]</y><z>[Testator.Gender.HisHer]</z><B></B><C>UTAH</C><D>[NotaryCounty|upper]</D><E></E><F>[WitnessNames[0]]</F><G></G></_odx>');
+
+        // let result = await openDocx.assembleDocx(templatePath, data, testUtil.FileNameAppend(templatePath, '-assembled'));
+        // assert.equal(result.HasErrors, false);
+        // const validation = await templater.validateDocument({documentFile: result.Document});
+        // assert.ok(!validation.HasErrors, validation.ErrorList);
+    })
 })
 
 const SimpleWillDemoContext = {

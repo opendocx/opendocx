@@ -1,7 +1,7 @@
 'use strict';
 
 const docxTemplater = require('./docx-templater');
-const docxEvaluator = require('./docx-evaluator');
+const XmlAssembler = require('./docx-evaluator');
 const yatte = require('yatte');
 const fs = require('fs');
 const OD = yatte.FieldTypes;
@@ -76,7 +76,7 @@ exports.assembleDocx = async function (templatePath, data, outputFile) {
     }
     const options = {
         templateFile: docxGenTemplate,
-        xmlData: docxEvaluator.assembleXml(data, extractedLogic),
+        xmlData: new XmlAssembler(data).assembleXml(extractedLogic),
         documentFile: outputFile,
     };
     let result = await docxTemplater.assembleDocument(options);
