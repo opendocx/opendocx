@@ -5,11 +5,7 @@ VisualStudioVersion = 15.0.28307.271
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenDocx.Templater", "OpenDocx.Templater\OpenDocx.Templater.csproj", "{9ACB9FAA-83B1-4645-AF23-A3407A9166B9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenDocx.Templater.Tests", "OpenDocx.Templater.Tests\OpenDocx.Templater.Tests.csproj", "{F55EF72F-0F6D-4E2F-A0B1-D483123E149A}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "utility", "utility", "{9313B014-98E9-4BED-8742-D1EF56C013F6}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "opendc", "utility\opendc\opendc.csproj", "{7548C99C-90CD-4DFD-A0E2-08E547A2F0A0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenDocx.Templater.Tests", "OpenDocx.Templater.Tests\OpenDocx.Templater.Tests.csproj", "{F55EF72F-0F6D-4E2F-A0B1-D483123E149A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -25,16 +21,9 @@ Global
 		{F55EF72F-0F6D-4E2F-A0B1-D483123E149A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F55EF72F-0F6D-4E2F-A0B1-D483123E149A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F55EF72F-0F6D-4E2F-A0B1-D483123E149A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7548C99C-90CD-4DFD-A0E2-08E547A2F0A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7548C99C-90CD-4DFD-A0E2-08E547A2F0A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7548C99C-90CD-4DFD-A0E2-08E547A2F0A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7548C99C-90CD-4DFD-A0E2-08E547A2F0A0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{7548C99C-90CD-4DFD-A0E2-08E547A2F0A0} = {9313B014-98E9-4BED-8742-D1EF56C013F6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {53226EBA-E2C2-4946-B8AA-F71C5564F1D5}

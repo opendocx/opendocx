@@ -12,14 +12,12 @@
     <PackageReference Include="Microsoft.CSharp" Version="4.5.0" />
     <PackageReference Include="Microsoft.DotNet.InternalAbstractions" Version="1.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="2.1.0" />
+    <PackageReference Include="OpenXmlPowerTools-NetStandard" Version="4.4.20" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="EdgeJs">
       <HintPath>..\node_modules\edge-js\lib\bootstrap\bin\Release\netcoreapp1.1\EdgeJs.dll</HintPath>
       <Private>true</Private>
-    </Reference>
-    <Reference Include="OpenXmlPowerTools">
-      <HintPath>..\..\OpenXmlPowerTools\OpenXmlPowerTools\bin\Debug\netstandard2.0\OpenXmlPowerTools.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>
