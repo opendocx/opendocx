@@ -9,7 +9,7 @@ describe('Assembling documents from DOCX templates', function() {
         //const compileResult = await openDocx.compileDocx(templatePath);
         const data = SimpleWillDemoContext;
         // now assemble the document against this data context
-        let result = await openDocx.assembleDocx(templatePath, data, testUtil.FileNameAppend(templatePath, '-assembled'));
+        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), data);
         assert.equal(result.HasErrors, false);
         const validation = await templater.validateDocument({documentFile: result.Document});
         assert.ok(!validation.HasErrors, validation.ErrorList);
@@ -19,7 +19,7 @@ describe('Assembling documents from DOCX templates', function() {
         const compileResult = await openDocx.compileDocx(templatePath);
         const data = BradyTestData;
 
-        let result = await openDocx.assembleDocx(templatePath, data, testUtil.FileNameAppend(templatePath, '-assembled'));
+        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), data);
         assert.equal(result.HasErrors, false);
         const validation = await templater.validateDocument({documentFile: result.Document});
         assert.ok(!validation.HasErrors, validation.ErrorList);
@@ -42,7 +42,7 @@ describe('Assembling documents from DOCX templates', function() {
             'outer': [{z: true, C:'candy'},{z: false, B2:'brother',inner:[{C:'Ted'},{C:'Gump'}]}],
             'inner': [{C: 'clamp'},{C: 'corrigible'},{C:'corrupt'}]
         };
-        let result = await openDocx.assembleDocx(templatePath, data, testUtil.FileNameAppend(templatePath, '-assembled'));
+        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), data);
         assert.equal(result.HasErrors, false);
         const validation = await templater.validateDocument({documentFile: result.Document});
         assert.ok(!validation.HasErrors, validation.ErrorList);
@@ -63,7 +63,7 @@ describe('Assembling documents from DOCX templates', function() {
             'DeedFee': '50.00',
             'ClientState': 'California',
         };
-        let result = await openDocx.assembleDocx(templatePath, data, testUtil.FileNameAppend(templatePath, '-assembled'));
+        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), data);
         assert.equal(result.HasErrors, false);
         const validation = await templater.validateDocument({documentFile: result.Document});
         assert.ok(!validation.HasErrors, validation.ErrorList);

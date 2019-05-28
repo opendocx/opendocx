@@ -3,21 +3,23 @@
 const { ContextStack, Engine } = require('yatte');
 
 class XmlAssembler {
-    constructor (context) {XmlAssembler
+    constructor (context, locals = null) {XmlAssembler
         this.context = context;
+        this.locals = locals;
+        this.missing = {};
         this.contextStack = new ContextStack();
     }
 
     assembleXml(templateJsFile, joinstr = "") {
         this.xmlBuilder = ['<?xml version="1.0"?>'];
         const extractedLogic = require(templateJsFile);
-        extractedLogic.evaluate(this.context, this);
+        extractedLogic.evaluate(this.context, this.locals, this);
         return this.xmlBuilder.join(joinstr);
     }
 
-    beginObject(ident, objContext) {
+    beginObject(ident, objContext, objLocals) {
         if (this.contextStack.empty()) {
-            this.contextStack.pushGlobal(objContext, ident);
+            this.contextStack.pushGlobal(objContext, objLocals);
         } else {
             this.contextStack.pushObject(ident, objContext);
         }
@@ -41,6 +43,7 @@ class XmlAssembler {
         const evaluator = Engine.compileExpr(expr); // these are cached so this should be fast
         let value = frame.evaluate(evaluator); // we need to make sure this is memoized to avoid unnecessary re-evaluation
         if (value === null || typeof value === 'undefined') {
+            this.missing[expr] = true;
             value = '[' + expr + ']'; // missing value placeholder
         }
         if (value === '') {

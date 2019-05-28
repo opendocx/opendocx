@@ -68,7 +68,7 @@ describe('Generating XML data for DOCX templates (white box)', function() {
         assert.equal(str,
             '<?xml version="1.0"?><_odx><a>[Testator.Name]</a><b>[Testator.City]</b><c>[Testator.County]</c><d>[Testator.State]</d><e>[Representative.Name]</e><f>[Representative.City]</f><g>[Representative.County]</g><h>[Representative.State]</h><i>[Representative.Gender.HeShe]</i><n>false</n><v></v><w>Utah</w><x>26th day of April, 2019</x><y>[Testator.Gender.HimHer]</y><z>[Testator.Gender.HisHer]</z><B></B><C>UTAH</C><D>[NotaryCounty|upper]</D><E></E><F>[WitnessNames[0]]</F><G></G></_odx>');
 
-        // let result = await openDocx.assembleDocx(templatePath, data, testUtil.FileNameAppend(templatePath, '-assembled'));
+        // let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), data);
         // assert.equal(result.HasErrors, false);
         // const validation = await templater.validateDocument({documentFile: result.Document});
         // assert.ok(!validation.HasErrors, validation.ErrorList);

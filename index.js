@@ -32,10 +32,8 @@ exports.compileDocx = async function(templatePath) {
     // simplify the logic of the AST and save it for potential future use
     const simplifiedAstPath = templatePath + ".json";
     let rast = yatte.Engine.buildLogicTree(ast); // prunes logically insignificant nodes from ast
-    if (!cleanUpArtifacts) {
-        fs.writeFileSync(simplifiedAstPath, JSON.stringify(rast));
-        ttpl.ExtractedLogicTree = simplifiedAstPath;
-    }
+    fs.writeFileSync(simplifiedAstPath, JSON.stringify(rast));
+    ttpl.ExtractedLogicTree = simplifiedAstPath;
     // use the simplified AST to create a JS function turns a OpenDocx data context into DocxGen XML matched to the template
     const outputJsPath = templatePath + ".js";
     fs.writeFileSync(outputJsPath, createTemplateJsModule(rast, fieldDict));
@@ -58,12 +56,13 @@ exports.compileDocx = async function(templatePath) {
     // {
     //      HasErrors: false,
     //      ExtractedLogic: "c:\path\to\template.docx.js",
+    //      ExtractedLogicTree: "c:\path\to\template.docx.json",
     //      DocxGenTemplate: "c:\path\to\template.docxgen.docx",
     // }
     return ttpl;
 }
 
-exports.assembleDocx = async function (templatePath, data, outputFile) {
+exports.assembleDocx = async function (templatePath, outputFile, data, locals) {
     // templatePath should have been compiled (previously) so the expected files will be on disk
     // but if not we'll compile it now
     let extractedLogic = templatePath + '.js';
@@ -74,16 +73,19 @@ exports.assembleDocx = async function (templatePath, data, outputFile) {
         extractedLogic = compileResult.ExtractedLogic;
         docxGenTemplate = compileResult.DocxGenTemplate;
     }
+    const dataAssembler = new XmlAssembler(data, locals)
     const options = {
         templateFile: docxGenTemplate,
-        xmlData: new XmlAssembler(data).assembleXml(extractedLogic),
+        xmlData: dataAssembler.assembleXml(extractedLogic),
         documentFile: outputFile,
     };
     let result = await docxTemplater.assembleDocument(options);
+    result.Missing = Object.keys(dataAssembler.missing)
     // result looks like:
     // {
     //      HasErrors: false,
-    //      Document: "c:\path\to\document.docx"
+    //      Document: "c:\path\to\document.docx",
+    //      Missing: ["expr1", "expr2", ...]
     // }
     return result;
 }
@@ -102,14 +104,14 @@ const buildFieldDictionary = function (astBody, fieldDict, parent = null) {
 
 const createTemplateJsModule = function(ast) {
     const sb = ["'use strict';"];
-    sb.push('exports.evaluate=function(cx,h)');
-    sb.push(serializeContextInDataJs(ast, '_odx', 'cx', null));
+    sb.push('exports.evaluate=function(cx,cl,h)');
+    sb.push(serializeContextInDataJs(ast, '_odx', 'cx', 'cl', null));
     return sb.join('\n');
 }
 
-const serializeContextInDataJs = function(contentArray, id, objIdent, parentNode) {
+const serializeContextInDataJs = function(contentArray, id, objIdent, locIdent, parentNode) {
     return `{
-h.beginObject('${id}',${objIdent});
+h.beginObject('${id}',${objIdent}${locIdent ? (','+locIdent):''});
 ${serializeContentArrayAsDataJs(contentArray, parentNode)}
 h.endObject()
 }`
@@ -131,7 +133,7 @@ const serializeAstNodeAsDataJs = function(astNode, parent) {
         case OD.List:
             let a0 = atom + '0';
             return `for(const ${a0} of h.beginList('${atom}', '${astNode.expr}'))
-${serializeContextInDataJs(astNode.contentArray, a0, a0, astNode)}
+${serializeContextInDataJs(astNode.contentArray, a0, a0, '', astNode)}
 h.endList();`
 
         case OD.If:
