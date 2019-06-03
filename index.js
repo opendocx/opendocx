@@ -68,13 +68,24 @@ exports.assembleDocx = async function (templatePath, outputFile, data, locals) {
     // but if not we'll compile it now
     let extractedLogic = templatePath + '.js';
     let docxGenTemplate = templatePath + 'gen.docx';
+    const dataAssembler = new XmlAssembler(data, locals)
+    let needRegen = false
     if (!fs.existsSync(extractedLogic) || !fs.existsSync(docxGenTemplate)) {
         console.log('Warning: compiled template files not found; generating. Please pre-compile templates to avoid terrible performance.');
+        needRegen = true
+    } else {
+        try {
+            dataAssembler.loadTemplateModule(extractedLogic)
+        } catch (e) {
+            console.log('Warning: compiled template files are incorrect version. Please pre-compile templates when upgrading to avoid performance penalty on first use.');
+            needRegen = true
+        }
+    }
+    if (needRegen) {
         const compileResult = await exports.compileDocx(templatePath);
         extractedLogic = compileResult.ExtractedLogic;
         docxGenTemplate = compileResult.DocxGenTemplate;
     }
-    const dataAssembler = new XmlAssembler(data, locals)
     const options = {
         templateFile: docxGenTemplate,
         xmlData: dataAssembler.assembleXml(extractedLogic),

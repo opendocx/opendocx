@@ -15,10 +15,13 @@ class XmlAssembler {
     loadTemplateModule(templateJsFile) {
         const thisVers = semver.major(version) + '.' + semver.minor(version)
         const extractedLogic = require(templateJsFile);
-        if (semver.eq(version, extractedLogic.version) || semver.satisfies(extractedLogic.version, thisVers)) {
+        const loadedVers = extractedLogic.version
+        if (semver.eq(version, loadedVers) || semver.satisfies(loadedVers, thisVers)) {
             return extractedLogic
-        }
-        throw new Error(`Version mismatch: Expecting template JavaScript version ${thisVers}.x, but JS file is version ${extractedLogic.version}`)
+        } // else
+        // invalidate loaded module with incorrect version!
+        delete require.cache[require.resolve(templateJsFile)]
+        throw new Error(`Version mismatch: Expecting template JavaScript version ${thisVers}.x, but JS file is version ${loadedVers}`)
     }
 
     assembleXml(templateJsFile, joinstr = "") {
