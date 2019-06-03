@@ -6,6 +6,7 @@ const yatte = require('yatte');
 const fs = require('fs');
 const OD = yatte.FieldTypes;
 const atomize = require('./string-atomizer');
+const version = require('./version');
 
 exports.compileDocx = async function(templatePath) {
     // secret second parameter:
@@ -104,6 +105,7 @@ const buildFieldDictionary = function (astBody, fieldDict, parent = null) {
 
 const createTemplateJsModule = function(ast) {
     const sb = ["'use strict';"];
+    sb.push(`exports.version='${version}';`)
     sb.push('exports.evaluate=function(cx,cl,h)');
     sb.push(serializeContextInDataJs(ast, '_odx', 'cx', 'cl', null));
     return sb.join('\n');

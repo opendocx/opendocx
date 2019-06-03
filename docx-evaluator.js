@@ -1,6 +1,8 @@
 'use strict';
 
 const { ContextStack, Engine } = require('yatte');
+const version = require('./version');
+const semver = require('semver')
 
 class XmlAssembler {
     constructor (context, locals = null) {XmlAssembler
@@ -10,9 +12,18 @@ class XmlAssembler {
         this.contextStack = new ContextStack();
     }
 
+    loadTemplateModule(templateJsFile) {
+        const thisVers = semver.major(version) + '.' + semver.minor(version)
+        const extractedLogic = require(templateJsFile);
+        if (semver.eq(version, extractedLogic.version) || semver.satisfies(extractedLogic.version, thisVers)) {
+            return extractedLogic
+        }
+        throw new Error(`Version mismatch: Expecting template JavaScript version ${thisVers}.x, but JS file is version ${extractedLogic.version}`)
+    }
+
     assembleXml(templateJsFile, joinstr = "") {
         this.xmlBuilder = ['<?xml version="1.0"?>'];
-        const extractedLogic = require(templateJsFile);
+        const extractedLogic = this.loadTemplateModule(templateJsFile);
         extractedLogic.evaluate(this.context, this.locals, this);
         return this.xmlBuilder.join(joinstr);
     }
