@@ -523,19 +523,12 @@ namespace OpenDocx
                     if (para != null) // block-level list
                     {
                         // append list punctuation to end of last paragraph of repeating content
-                        int i = repeatingContent.Count - 1;
-                        while (i >= 0)
+                        XElement lastPara = FindLastParagraphInRepeatingContentArray(repeatingContent);
+                        if (lastPara != null)
                         {
-                            XElement el = (XElement)repeatingContent[i];
-                            XElement lastPara = el.DescendantsAndSelf(W.p).LastOrDefault();
-                            if (lastPara != null)
-                            {
-                                lastPara.Add(CCWrap(puncElem));
-                                break;
-                            }
-                            i--;
+                            lastPara.Add(CCWrap(puncElem));
                         }
-                        // now prefix and suffix repeating content with repeat elements/tags
+                        // now prefix and suffix repeating content with block-level repeat elements/tags
                         repeatingContent.Insert(0, CCWrap(PWrap(startElem)));
                         // repeatingContent here
                         repeatingContent.Add(CCWrap(PWrap(endElem)));
@@ -652,6 +645,29 @@ namespace OpenDocx
                     element.Nodes().Select(n => ContentReplacementTransform(n, xm, templateError)));
             }
             return node;
+        }
+
+        static XElement FindLastParagraphInRepeatingContentArray(List<object> repeatingContent)
+        {
+            XElement result = null;
+            int i = repeatingContent.Count - 1;
+            while (result == null && i >= 0)
+            {
+                object item = repeatingContent[i];
+                XElement el = item as XElement;
+                if (el != null )
+                {
+                    result = el.DescendantsAndSelf(W.p).LastOrDefault();
+                }
+                else if (item is List<object>) // item is a nested block -- nested repeat (or conditional?)
+                {
+                    // we don't recurse because there's no appropriate place to put closing repeat punctuation in this case.
+                    //result = FindLastParagraphInRepeatingContentArray((List<object>)item);
+                    break;
+                }
+                i--;
+            }
+            return result;
         }
     }
 }
