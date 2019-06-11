@@ -16,7 +16,7 @@ class XmlAssembler {
         const thisVers = semver.major(version) + '.' + semver.minor(version)
         const extractedLogic = require(templateJsFile);
         const loadedVers = extractedLogic.version
-        if (semver.eq(version, loadedVers) || semver.satisfies(loadedVers, thisVers)) {
+        if (loadedVers && semver.eq(version, loadedVers) || semver.satisfies(loadedVers, thisVers)) {
             return extractedLogic
         } // else
         // invalidate loaded module with incorrect version!
