@@ -488,9 +488,9 @@ namespace OpenDocx
                     XElement run = element.Descendants(W.r).FirstOrDefault();
                     if (para != null)
                     {
-                        XElement r = new XElement(W.r,
-                            para.Elements(W.pPr).FirstOrDefault().Elements(W.rPr).FirstOrDefault(),
-                            new XElement(W.t, fieldText));
+                        XElement pPr = para.Elements(W.pPr).FirstOrDefault();
+                        XElement rPr = pPr?.Elements(W.rPr).FirstOrDefault();
+                        XElement r = new XElement(W.r, rPr, new XElement(W.t, fieldText));
                         ccc = PWrap(para.Elements(W.pPr), r);
                     }
                     else
