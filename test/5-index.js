@@ -38,7 +38,6 @@ const redundant_if_logic_tree = [
         "name": "x",
         "constant": false
     },
-    "new": true,
     "contentArray": [{
             "type": "Content",
             "expr": "adjective",
@@ -68,7 +67,6 @@ const redundant_if_logic_tree = [
         "name": "x",
         "constant": false
     },
-    "new": false,
     "contentArray": [{
             "type": "Else",
             "contentArray": []
@@ -97,7 +95,6 @@ const TestNestLogicTree = [
             name: "x",
             constant: false
         },
-        new: true,
         contentArray: [
             {
                 type: "List",
@@ -137,7 +134,6 @@ const TestNestLogicTree = [
                     name: "y",
                     constant: false
                 },
-                new: true,
                 contentArray: [
                     {
                         type: "Content",
@@ -168,12 +164,13 @@ const TestNestLogicTree = [
                                         name: "z",
                                         constant: false
                                     },
-                                    alternate: {
+                                    fixed: true,
+                                    consequent: {
                                         type: "Identifier",
                                         name: "B",
                                         constant: false
                                     },
-                                    consequent: {
+                                    alternate: {
                                         type: "Identifier",
                                         name: "B2",
                                         constant: false
