@@ -115,9 +115,7 @@ namespace OpenDocx
                             .Where(e => e.Name == W.t)
                             .Select(t => (string)t)
                             .StringConcatenate()
-                            .Trim()
-                            .Replace('“', '"')
-                            .Replace('”', '"');
+                            .CleanUpInvalidCharacters();
                         if (FieldRecognizer.IsField(ccContents, out ccContents))
                         {
                             var fieldId = fieldAccumulator.Count.ToString();
@@ -197,7 +195,7 @@ namespace OpenDocx
                             var content = matchString.Substring(
                                     FieldRecognizer.EmbedBegin.Length,
                                     matchString.Length - FieldRecognizer.EmbedBegin.Length - FieldRecognizer.EmbedEnd.Length
-                                ).Trim().Replace('“', '"').Replace('”', '"');
+                                ).CleanUpInvalidCharacters();
                             if (FieldRecognizer.IsField(content, out content))
                             {
                                 var fieldId = fieldAccumulator.Count.ToString();
@@ -248,5 +246,17 @@ namespace OpenDocx
                 new XElement(W.sdtContent, content)
             );
         static XElement PWrap(params object[] content) => new XElement(W.p, content);
+    }
+
+    public static class StringFixerUpper
+    {
+        public static string CleanUpInvalidCharacters(this string fieldText)
+        {
+            return fieldText.Trim()
+                            .Replace('“', '"') // replace curly quotes with straight ones
+                            .Replace('”', '"')
+                            .Replace("\u200b", null) // remove zero-width spaces -- potentially inserted via Macro or Word add-in for purposes of making the template look better
+                            .Replace("\u200c", null);
+        }
     }
 }
