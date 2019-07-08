@@ -198,9 +198,7 @@ namespace OpenDocx
                                 ).CleanUpInvalidCharacters();
                             if (FieldRecognizer.IsField(content, out content))
                             {
-                                var fieldId = fieldAccumulator.Count.ToString();
-                                fieldAccumulator.Add(new FieldInfo(content, fieldId));
-                                runReplacementInfo.Add(CCTWrap(fieldId, new XElement(W.r, new XElement(W.t,
+                                runReplacementInfo.Add(CCWrap(new XElement(W.r, new XElement(W.t,
                                     FieldRecognizer.FieldBegin + content + FieldRecognizer.FieldEnd))));
                                 return true;
                             }
@@ -221,7 +219,7 @@ namespace OpenDocx
                             }
                         }
                         var coalescedParagraph = WordprocessingMLUtil.CoalesceAdjacentRunsWithIdenticalFormatting(newPara);
-                        return coalescedParagraph;
+                        return IdentifyAndTransformFields(coalescedParagraph, fieldAccumulator, te);
                     }
                 }
 

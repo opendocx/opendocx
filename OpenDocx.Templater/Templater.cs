@@ -196,11 +196,10 @@ namespace OpenDocx
                 if (element.Name == W.sdt)
                 {
                     var alias = (string)element.Elements(W.sdtPr).Elements(W.alias).Attributes(W.val).FirstOrDefault();
-                    if (alias == null || alias == "")
+                    if (string.IsNullOrEmpty(alias))
                     {
                         var tag = (string)element.Elements(W.sdtPr).Elements(W.tag).Attributes(W.val).FirstOrDefault();
-                        System.Diagnostics.Debug.Assert(!string.IsNullOrEmpty(tag));
-                        if (xm.TryGetValue(tag, out var fieldInfo))
+                        if (!string.IsNullOrEmpty(tag) && xm.TryGetValue(tag, out var fieldInfo))
                         {
                             XElement xml = new XElement(fieldInfo.fieldType, new XAttribute(OD.Id, tag));
                             xml.Add(element.Elements(W.sdtContent).Elements());
