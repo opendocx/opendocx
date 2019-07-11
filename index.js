@@ -135,6 +135,8 @@ const serializeAstNodeAsDataJs = function(astNode, parent) {
     if (astNode.expr) {
         if (astNode.expr === '_punc') { // special case: list punctuation: use a customized "atom" derived from the list expression
             atom = atomize(parent.expr) + '1'
+        } else if (astNode.type === OD.If || astNode.type === OD.ElseIf) { // special case: evaluating an expression for purposes of determining its truthiness rather than its actual value
+            atom = atomize(astNode.expr) + '2'
         } else { // regular case: atom based on expression
             atom = atomize(astNode.expr);
         }
@@ -144,20 +146,20 @@ const serializeAstNodeAsDataJs = function(astNode, parent) {
             return `h.define('${atom}','${astNode.expr}');`
 
         case OD.List:
-            let a0 = atom + '0';
+            let a0 = atom + '0'; // special atom representing individual items in the list, rather than the entire list
             return `for(const ${a0} of h.beginList('${atom}', '${astNode.expr}'))
 ${serializeContextInDataJs(astNode.contentArray, a0, a0, '', astNode)}
 h.endList();`
 
         case OD.If:
-            return `if(h.beginCondition('${atom}','${astNode.expr}',${astNode.new}))
+            return `if(h.beginCondition('${atom}','${astNode.expr}',${astNode.firstRef}))
 {
 ${serializeContentArrayAsDataJs(astNode.contentArray, astNode)}
 }`
 
         case OD.ElseIf:
             return `} else {
-if(h.beginCondition('${atom}','${astNode.expr}',${astNode.new}))
+if(h.beginCondition('${atom}','${astNode.expr}',${astNode.firstRef}))
 {
 ${serializeContentArrayAsDataJs(astNode.contentArray, astNode)}
 }`

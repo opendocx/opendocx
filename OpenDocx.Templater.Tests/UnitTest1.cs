@@ -17,10 +17,15 @@ namespace OpenDocxTemplater.Tests
 {
     public class Tests
     {
-        [Fact]
-        public void CompileSimpleWillTemplate()
+        [Theory]
+        [InlineData("SimpleWill.docx")]
+        [InlineData("Lists.docx")]
+        [InlineData("team_report.docx")]
+        [InlineData("abconditional.docx")]
+        [InlineData("crasher.docx")]
+        [InlineData("redundant_ifs.docx")]
+        public void CompileTemplate(string name)
         {
-            string name = "SimpleWill.docx";
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
             FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
             DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
@@ -36,95 +41,21 @@ namespace OpenDocxTemplater.Tests
             var compileResult = templater.CompileTemplate(templateName, extractResult.TempTemplate, templateName + "obj.fields.json");
             Assert.False(compileResult.HasErrors);
             Assert.True(File.Exists(compileResult.DocxGenTemplate));
-
         }
 
         [Fact]
-        public void CompileListsTemplate()
+        public void CompileNested()
         {
-            string name = "Lists.docx";
-            DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
-            FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+            CompileTemplate("nested.docx");
+
             DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
-            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, name));
-            string templateName = outputDocx.FullName;
-            templateDocx.CopyTo(templateName, true);
-            var extractResult = OpenDocx.FieldExtractor.ExtractFields(templateName);
-            Assert.True(File.Exists(extractResult.ExtractedFields));
-            Assert.True(File.Exists(extractResult.TempTemplate));
+            FileInfo docxGenTemplate = new FileInfo(Path.Combine(destDir.FullName, "nested.docxgen.docx"));
 
-            var templater = new Templater();
-            // warning... the file 'templateName + "obj.fields.json"' must have been created by node.js external to this test. (hack/race)
-            var compileResult = templater.CompileTemplate(templateName, extractResult.TempTemplate, templateName + "obj.fields.json");
-            Assert.False(compileResult.HasErrors);
-            Assert.True(File.Exists(compileResult.DocxGenTemplate));
+            WmlDocument afterCompiling = new WmlDocument(docxGenTemplate.FullName);
 
-        }
-
-        [Fact]
-        public void CompileTeamReportTemplate()
-        {
-            string name = "team_report.docx";
-            DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
-            FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
-            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
-            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, name));
-            string templateName = outputDocx.FullName;
-            templateDocx.CopyTo(templateName, true);
-            var extractResult = OpenDocx.FieldExtractor.ExtractFields(templateName);
-            Assert.True(File.Exists(extractResult.ExtractedFields));
-            Assert.True(File.Exists(extractResult.TempTemplate));
-
-            var templater = new Templater();
-            // warning... the file 'templateName + "obj.fields.json"' must have been created by node.js external to this test. (hack/race)
-            var compileResult = templater.CompileTemplate(templateName, extractResult.TempTemplate, templateName + "obj.fields.json");
-            Assert.False(compileResult.HasErrors);
-            Assert.True(File.Exists(compileResult.DocxGenTemplate));
-
-        }
-
-        [Fact]
-        public void CompileABConditionalTemplate()
-        {
-            string name = "abconditional.docx";
-            DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
-            FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
-            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
-            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, name));
-            string templateName = outputDocx.FullName;
-            templateDocx.CopyTo(templateName, true);
-            var extractResult = OpenDocx.FieldExtractor.ExtractFields(templateName);
-            Assert.True(File.Exists(extractResult.ExtractedFields));
-            Assert.True(File.Exists(extractResult.TempTemplate));
-
-            var templater = new Templater();
-            // warning... the file 'templateName + "obj.fields.json"' must have been created by node.js external to this test. (hack/race)
-            var compileResult = templater.CompileTemplate(templateName, extractResult.TempTemplate, templateName + "obj.fields.json");
-            Assert.False(compileResult.HasErrors);
-            Assert.True(File.Exists(compileResult.DocxGenTemplate));
-
-        }
-
-        [Fact]
-        public void CompileCrasher()
-        {
-            string name = "crasher.docx";
-            DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
-            FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
-            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
-            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, name));
-            string templateName = outputDocx.FullName;
-            templateDocx.CopyTo(templateName, true);
-            var extractResult = OpenDocx.FieldExtractor.ExtractFields(templateName);
-            Assert.True(File.Exists(extractResult.ExtractedFields));
-            Assert.True(File.Exists(extractResult.TempTemplate));
-
-            var templater = new Templater();
-            // warning... the file 'templateName + "obj.fields.json"' must have been created by node.js external to this test. (hack/race)
-            var compileResult = templater.CompileTemplate(templateName, extractResult.TempTemplate, templateName + "obj.fields.json");
-            Assert.False(compileResult.HasErrors);
-            Assert.True(File.Exists(compileResult.DocxGenTemplate));
-
+            // make sure there are no nested content controls
+            afterCompiling.MainDocumentPart.Element(W.body).Elements(W.sdt).ToList().ForEach(
+                cc => Assert.Null(cc.Descendants(W.sdt).FirstOrDefault()));
         }
 
         //[Fact]

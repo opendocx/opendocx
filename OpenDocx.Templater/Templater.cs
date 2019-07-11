@@ -108,6 +108,9 @@ namespace OpenDocx
             // any EndRepeat, EndConditional that remain are orphans, so replace with an error
             ProcessOrphanEndRepeatEndConditional(xDocRoot, te);
 
+            // add placeholders for list punctuation
+            xDocRoot = (XElement)AddListPunctuationPlaceholders(xDocRoot, te);
+
             // finally, transform the metadata objects BACK into document content, but this time in DocxGen syntax!
             xDocRoot = (XElement)ContentReplacementTransform(xDocRoot, xm, te);
 
@@ -186,6 +189,7 @@ namespace OpenDocx
             public static readonly XName Expr = "expr";
             public static readonly XName Depth = "depth";
             public static readonly XName Id = "id";
+            public static readonly XName Punc = "punc";
         }
 
         private static object ParseFields(XNode node, FieldTransformIndex xm, TemplateError te)
@@ -467,6 +471,70 @@ namespace OpenDocx
             return errorPara;
         }
 
+        private static object AddListPunctuationPlaceholders(XNode node, TemplateError te)
+        {
+            XElement element = node as XElement;
+            if (element != null)
+            {
+                if (element.Name == OD.List)
+                {
+                    XElement puncRun = new XElement(OD.Content,
+                        element.Attribute(OD.Id),
+                        new XAttribute(OD.Punc, true),
+                        new XElement(W.r, new XElement(W.t, "[_punc]")));
+                    XElement para = element.Descendants(W.p).LastOrDefault();
+                    if (para != null) // block-level list
+                    {
+                        if (object.ReferenceEquals(element, para.Parent))
+                        {
+                            // the last paragraph in the list is a direct child of the list, so go ahead and append the punctuation to that paragraph's content
+                            return new XElement(OD.List,
+                                element.Attributes(),
+                                para.NodesBeforeSelf().Select(n => AddListPunctuationPlaceholders(n, te)),
+                                new XElement(W.p,
+                                    para.Attributes(), 
+                                    para.Nodes().Select(n => AddListPunctuationPlaceholders(n, te)),
+                                    puncRun),
+                                para.NodesAfterSelf().Select(n => AddListPunctuationPlaceholders(n, te)));
+                        }
+                        else if (para.Parent.Name == OD.Content && object.ReferenceEquals(element, para.Parent.Parent))
+                        {
+                            // the last paragraph is a child of a Content element, meaning, that "metadata" (content element) is block-level.
+                            // force block-level metadata down to a child of the paragraph (so punctuation can be appended)
+                            var contentElem = para.Parent;
+                            return new XElement(OD.List,
+                                element.Attributes(),
+                                contentElem.NodesBeforeSelf().Select(n => AddListPunctuationPlaceholders(n, te)),
+                                new XElement(W.p,
+                                    para.Attributes(),
+                                    para.Elements(W.pPr),
+                                    new XElement(contentElem.Name,
+                                        contentElem.Attributes(),
+                                        para.Nodes()
+                                            .Where(n => n.NodeType != System.Xml.XmlNodeType.Element || (n as XElement).Name != W.pPr)
+                                            .Select(n => AddListPunctuationPlaceholders(n, te))),
+                                    puncRun),
+                                contentElem.NodesAfterSelf().Select(n => AddListPunctuationPlaceholders(n, te)));
+                        }
+                        // the last paragraph is a child of something else (such as a nested list), so don't put THIS list's punctuation on it
+                        return new XElement(OD.List,
+                            element.Attributes(),
+                            element.Nodes().Select(n => AddListPunctuationPlaceholders(n, te)));
+                    }
+                    else // run-level list
+                    {
+                        return new XElement(OD.List,
+                            element.Attributes(),
+                            element.Nodes().Select(n => AddListPunctuationPlaceholders(n, te)).Append(puncRun));
+                    }
+                } // else anything but an OD.List
+                return new XElement(element.Name,
+                    element.Attributes(),
+                    element.Nodes().Select(n => AddListPunctuationPlaceholders(n, te)));
+            }
+            return node; // (null)
+        }
+
         static XElement CCWrap(params object[] content) => new XElement(W.sdt, new XElement(W.sdtContent, content));
 
         static XElement PWrap(params object[] content) => new XElement(W.p, content);
@@ -479,6 +547,15 @@ namespace OpenDocx
                 if (element.Name == OD.Content)
                 {
                     var selector = "./" + xm[element.Attribute(OD.Id).Value].atomizedExpr;
+                    if (element.Attribute(OD.Punc) == null) // regular content field
+                    {
+                        selector += "[1]"; // if xpath query returns multiple elements, just take the first one
+                    }
+                    else
+                    {
+                        selector += "1"; // the list selector with a "1" appended to it is where punctuation will be in the XML
+                    }
+
                     var fieldText = "<" + PA.Content + " "
                         + PA.Select + "=\"" + selector + "\" "
                         + PA.Optional + "=\"true\"/>";
@@ -494,21 +571,18 @@ namespace OpenDocx
                     }
                     else
                     {
-                        ccc = new XElement(W.r, new XElement(W.t, fieldText));
+                        ccc = new XElement(W.r,
+                                run?.Elements(W.rPr).FirstOrDefault(),
+                                new XElement(W.t, fieldText));
                     }
                     return CCWrap(ccc);
                 }
                 if (element.Name == OD.List)
                 {
                     var listAtom = xm[element.Attribute(OD.Id).Value].atomizedExpr;
-                    var puncAtom = listAtom + "1";
-                    var selector = "./" + listAtom + "/" + listAtom + "0";
-                    var puncSelector = "./" + puncAtom;
+                    var selector = "./" + listAtom + "[1]/" + listAtom + "0";
                     var startText = "<" + PA.Repeat + " "
                         + PA.Select + "=\"" + selector + "\" "
-                        + PA.Optional + "=\"true\"/>";
-                    var puncText = "<" + PA.Content + " "
-                        + PA.Select + "=\"" + puncSelector + "\" "
                         + PA.Optional + "=\"true\"/>";
                     var endText = "<" + PA.EndRepeat + "/>";
                     XElement para = element.Descendants(W.p).FirstOrDefault();
@@ -517,17 +591,10 @@ namespace OpenDocx
                         .Select(e => ContentReplacementTransform(e, xm, templateError))
                         .ToList();
                     XElement startElem = new XElement(W.r, new XElement(W.t, startText));
-                    XElement puncElem = new XElement(W.r, new XElement(W.t, puncText));
                     XElement endElem = new XElement(W.r, new XElement(W.t, endText));
                     if (para != null) // block-level list
                     {
-                        // append list punctuation to end of last paragraph of repeating content
-                        XElement lastPara = FindLastParagraphInRepeatingContentArray(repeatingContent);
-                        if (lastPara != null)
-                        {
-                            lastPara.Add(CCWrap(puncElem));
-                        }
-                        // now prefix and suffix repeating content with block-level repeat elements/tags
+                        // prefix and suffix repeating content with block-level repeat elements/tags
                         repeatingContent.Insert(0, CCWrap(PWrap(startElem)));
                         // repeatingContent here
                         repeatingContent.Add(CCWrap(PWrap(endElem)));
@@ -536,7 +603,6 @@ namespace OpenDocx
                     {
                         repeatingContent.Insert(0, CCWrap(startElem));
                         // repeatingContent here
-                        repeatingContent.Add(CCWrap(puncElem));
                         repeatingContent.Add(CCWrap(endElem));
                     }
                     return repeatingContent;
@@ -545,12 +611,12 @@ namespace OpenDocx
                 {
                     var endText = "<" + PA.EndConditional + "/>";
                     XElement endElem = new XElement(W.r, new XElement(W.t, endText));
-                    bool blockLevel = element.Descendants(W.p).FirstOrDefault() != null;
+                    bool blockLevel = element.IsEmpty || (element.Descendants(W.p).FirstOrDefault() != null);
                     if (element.Name == OD.If)
                     {
-                        var selector = xm[element.Attribute(OD.Id).Value].atomizedExpr;
+                        var selector = xm[element.Attribute(OD.Id).Value].atomizedExpr + "2";
                         var startText = "<" + PA.Conditional + " "
-                            + PA.Select + "=\"" + selector + "\" "
+                            + PA.Select + "=\"" + selector + "[1]\" "
                             + PA.Match + "=\"true\"/>";
                         var content = element
                             .Elements()
@@ -576,13 +642,13 @@ namespace OpenDocx
                         XElement lookUp = element.Parent;
                         while (lookUp.Name != OD.If && lookUp.Name != OD.ElseIf)
                             lookUp = lookUp.Parent;
-                        var selector = xm[lookUp.Attribute(OD.Id).Value].atomizedExpr;
+                        var selector = xm[lookUp.Attribute(OD.Id).Value].atomizedExpr + "2";
                         var startElseText = "<" + PA.Conditional + " "
-                            + PA.Select + "=\"" + selector + "\" "
+                            + PA.Select + "=\"" + selector + "[1]\" "
                             + PA.NotMatch + "=\"true\"/>"; // NotMatch instead of Match, represents "Else" branch
-                        selector = xm[element.Attribute(OD.Id).Value].atomizedExpr;
+                        selector = xm[element.Attribute(OD.Id).Value].atomizedExpr + "2";
                         var nestedIfText = "<" + PA.Conditional + " "
-                            + PA.Select + "=\"" + selector + "\" "
+                            + PA.Select + "=\"" + selector + "[1]\" "
                             + PA.Match + "=\"true\"/>";
                         var content = element
                             .Elements()
@@ -615,9 +681,9 @@ namespace OpenDocx
                         XElement lookUp = element.Parent;
                         while (lookUp.Name != OD.If && lookUp.Name != OD.ElseIf)
                             lookUp = lookUp.Parent;
-                        var selector = xm[lookUp.Attribute(OD.Id).Value].atomizedExpr;
+                        var selector = xm[lookUp.Attribute(OD.Id).Value].atomizedExpr + "2";
                         var startElseText = "<" + PA.Conditional + " "
-                            + PA.Select + "=\"" + selector + "\" "
+                            + PA.Select + "=\"" + selector + "[1]\" "
                             + PA.NotMatch + "=\"true\"/>"; // NotMatch instead of Match, represents "Else" branch
 
                         var content = element

@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+<_odx>
+	<a>Gunther</a>
+	<c>true</c>
+	<b>11000000</b>
+	<e>false</e>
+	<d>true</d>
+	<f>two thousand, five hundred</f>
+	<g>2,500.00</g>
+	<h>5</h>
+	<i>2,375.00</i>
+	<j>2,375</j>
+	<k>07/03/2019</k>
+	<l>3rd day of July, 2019</l>
+	<m>July 2019</m>
+	<n>7-3-2019</n>
+	<o>Martha Braun</o>
+	<p>01/01/1930</p>
+	<q>[InitialTrustee.FirstName]</q>
+	<s>
+		<s0>
+			<r>Martin</r>
+			<s1> and </s1>
+		</s0>
+		<s0>
+			<r>Margery</r>
+			<s1/>
+		</s0>
+	</s>
+	<v>
+		<v0>
+			<t>Son</t>
+			<u>Martin Braun</u>
+			<v1> and </v1>
+		</v0>
+		<v0>
+			<t>Daughter</t>
+			<u>Margery Braun Edwards</u>
+			<v1/>
+		</v0>
+	</v>
+	<x>
+		<x0>
+			<w>Binder</w>
+			<x1> and </x1>
+		</x0>
+		<x0>
+			<w>Cover Letter</w>
+			<x1/>
+		</x0>
+	</x>
+	<A>
+		<A0>
+			<y>Martin Braun</y>
+			<z>
+				<z0>
+					<w>one thing</w>
+					<z1/>
+				</z0>
+				<z0>
+					<w>another thing</w>
+					<z1/>
+				</z0>
+			</z>
+			<A1/>
+		</A0>
+		<A0>
+			<y>Margery Duke</y>
+			<z>
+				<z0>
+					<w>something</w>
+					<z1/>
+				</z0>
+			</z>
+			<A1/>
+		</A0>
+	</A>
+	<B>STRONG AND EDWARDS</B>
+	<C>GUNTHER BRAUN</C>
+	<D>MARTHA BRAUN</D>
+</_odx>
