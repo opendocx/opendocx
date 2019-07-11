@@ -25,7 +25,6 @@ namespace OpenDocx
             string outputFile = templateFileName + "obj.json";
             WmlDocument templateDoc = new WmlDocument(templateFileName); // just reads the template's bytes into memory (that's all), read-only
             WmlDocument preprocessedTemplate = null;
-            bool templateError = false;
             byte[] byteArray = templateDoc.DocumentByteArray;
             var fieldAccumulator = new FieldAccumulator();
             using (MemoryStream mem = new MemoryStream())
@@ -33,7 +32,7 @@ namespace OpenDocx
                 mem.Write(byteArray, 0, byteArray.Length); // copy template file (binary) into memory -- I guess so the template/file handle isn't held/locked?
                 using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(mem, true)) // read & parse that byte array into OXML document (also in memory)
                 {
-                    templateError = PrepareTemplate(wordDoc, fieldAccumulator);
+                    ExtractAllTemplateFields(wordDoc, fieldAccumulator);
                 }
                 preprocessedTemplate = new WmlDocument(newTemplateFileName, mem.ToArray());
             }
@@ -56,32 +55,24 @@ namespace OpenDocx
                 sw.Close();
             }
 
-            if (templateError)
-            {
-                Console.WriteLine("Errors in template.");
-                Console.WriteLine("See {0} to determine the errors in the template.", preprocessedTemplate.FileName);
-            }
-
-            return new FieldExtractResult(newTemplateFileName, outputFile, templateError);
+            return new FieldExtractResult(newTemplateFileName, outputFile);
         }
 
-        private static bool PrepareTemplate(WordprocessingDocument wordDoc, FieldAccumulator fieldAccumulator)
+        private static void ExtractAllTemplateFields(WordprocessingDocument wordDoc, FieldAccumulator fieldAccumulator)
         {
             if (RevisionAccepter.HasTrackedRevisions(wordDoc))
                 throw new FieldParseException("Invalid template - contains tracked revisions");
 
-            var te = new TemplateError();
             foreach (var part in wordDoc.ContentParts())
             {
-                PrepareTemplatePart(part, fieldAccumulator, te);
+                ExtractFieldsFromPart(part, fieldAccumulator);
             }
-            return te.HasError;
         }
 
-        private static void PrepareTemplatePart(OpenXmlPart part, FieldAccumulator fieldAccumulator, TemplateError te)
+        private static void ExtractFieldsFromPart(OpenXmlPart part, FieldAccumulator fieldAccumulator)
         {
             XDocument xDoc = part.GetXDocument();
-            var xDocRoot = (XElement)IdentifyAndTransformFields(xDoc.Root, fieldAccumulator, te);
+            var xDocRoot = (XElement)IdentifyAndTransformFields(xDoc.Root, fieldAccumulator);
             xDoc.Elements().First().ReplaceWith(xDocRoot);
             part.PutXDocument();
         }
@@ -100,7 +91,7 @@ namespace OpenDocx
             return count;
         }
 
-        private static object IdentifyAndTransformFields(XNode node, FieldAccumulator fieldAccumulator, TemplateError te)
+        private static object IdentifyAndTransformFields(XNode node, FieldAccumulator fieldAccumulator)
         {
             XElement element = node as XElement;
             if (element != null)
@@ -138,11 +129,11 @@ namespace OpenDocx
                         }
                         return new XElement(element.Name,
                             element.Attributes(),
-                            element.Nodes().Select(n => IdentifyAndTransformFields(n, fieldAccumulator, te)));
+                            element.Nodes().Select(n => IdentifyAndTransformFields(n, fieldAccumulator)));
                     }
                     return new XElement(element.Name,
                         element.Attributes(),
-                        element.Nodes().Select(n => IdentifyAndTransformFields(n, fieldAccumulator, te)));
+                        element.Nodes().Select(n => IdentifyAndTransformFields(n, fieldAccumulator)));
                 }
                 if (element.Name == W.p)
                 {
@@ -219,22 +210,17 @@ namespace OpenDocx
                             }
                         }
                         var coalescedParagraph = WordprocessingMLUtil.CoalesceAdjacentRunsWithIdenticalFormatting(newPara);
-                        return IdentifyAndTransformFields(coalescedParagraph, fieldAccumulator, te);
+                        return IdentifyAndTransformFields(coalescedParagraph, fieldAccumulator);
                     }
                 }
 
                 return new XElement(element.Name,
                     element.Attributes(),
-                    element.Nodes().Select(n => IdentifyAndTransformFields(n, fieldAccumulator, te)));
+                    element.Nodes().Select(n => IdentifyAndTransformFields(n, fieldAccumulator)));
             }
             return node;
         }
 
-        private class TemplateError
-        {
-            public bool HasError = false;
-        }
-        
         static XElement CCWrap(params object[] content) => new XElement(W.sdt, new XElement(W.sdtContent, content));
         static XElement CCTWrap(string tag, params object[] content) =>
             new XElement(W.sdt,
