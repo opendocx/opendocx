@@ -4,11 +4,13 @@
     {
         public string DocxGenTemplate { get; }
         public bool HasErrors { get; }
+        public string[] Errors { get; }
 
-        internal CompileResult(string compiledTemplate, bool hasErrors)
+        internal CompileResult(string compiledTemplate, string[] errors)
         {
             DocxGenTemplate = compiledTemplate;
-            HasErrors = hasErrors;
+            Errors = errors;
+            HasErrors = (errors != null) && (errors.Length > 0);
         }
     }
 }

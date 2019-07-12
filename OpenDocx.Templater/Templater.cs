@@ -49,44 +49,38 @@ namespace OpenDocx
             WmlDocument templateDoc = new WmlDocument(preProcessedTemplateFile); // just reads the template's bytes into memory (that's all), read-only
             byte[] byteArray = templateDoc.DocumentByteArray;
             WmlDocument transformedTemplate = null;
-            bool templateError = false;
+            TemplateErrorList templateErrors;
             using (MemoryStream mem = new MemoryStream())
             {
                 mem.Write(byteArray, 0, byteArray.Length); // copy template file (binary) into memory -- I guess so the template/file handle isn't held/locked?
                 using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(mem, true)) // read & parse that byte array into OXML document (also in memory)
                 {
-                    templateError = PrepareTemplate(wordDoc, xm);
+                    templateErrors = PrepareTemplate(wordDoc, xm);
                 }
                 transformedTemplate = new WmlDocument(newDocxFilename, mem.ToArray());
             }
             // save the output (even in the case of error, since error messages are in the file)
             transformedTemplate.Save();
 
-            if (templateError)
-            {
-                Console.WriteLine("Errors in template.");
-                Console.WriteLine("See {0} to determine the errors in the template.", transformedTemplate.FileName);
-            }
-
-            return new CompileResult(transformedTemplate.FileName, templateError);
+            return new CompileResult(transformedTemplate.FileName, templateErrors.ErrorList.Select(e => e.ToString()).ToArray());
         }
 
-        private static bool PrepareTemplate(WordprocessingDocument wordDoc, FieldTransformIndex xm)
+        private static TemplateErrorList PrepareTemplate(WordprocessingDocument wordDoc, FieldTransformIndex xm)
         {
             if (RevisionAccepter.HasTrackedRevisions(wordDoc))
                 throw new FieldParseException("Invalid template - contains tracked revisions");
 
             SimplifyTemplateMarkup(wordDoc);
 
-            var te = new TemplateError();
+            var te = new TemplateErrorList();
             foreach (var part in wordDoc.ContentParts())
             {
                 PrepareTemplatePart(part, xm, te);
             }
-            return te.HasError;
+            return te;
         }
 
-        private static void PrepareTemplatePart(OpenXmlPart part, FieldTransformIndex xm, TemplateError te)
+        private static void PrepareTemplatePart(OpenXmlPart part, FieldTransformIndex xm, TemplateErrorList te)
         {
             XDocument xDoc = part.GetXDocument();
 
@@ -192,7 +186,7 @@ namespace OpenDocx
             public static readonly XName Punc = "punc";
         }
 
-        private static object ParseFields(XNode node, FieldTransformIndex xm, TemplateError te)
+        private static object ParseFields(XNode node, FieldTransformIndex xm, TemplateErrorList te)
         {
             XElement element = node as XElement;
             if (element != null)
@@ -227,7 +221,16 @@ namespace OpenDocx
             OD.EndList
         };
 
-        private static object ForceBlockLevelAsAppropriate(XNode node, TemplateError te)
+        private static Dictionary<XName, string> s_MatchingFieldNames = new Dictionary<XName, string> {
+            [OD.If] = "'endif'",
+            [OD.ElseIf] = "'if' and 'endif'",
+            [OD.Else] = "'if' and 'endif'",
+            [OD.EndIf] = "'if'",
+            [OD.List] = "'endlist'",
+            [OD.EndList] = "'list'"
+        };
+
+        private static object ForceBlockLevelAsAppropriate(XNode node, TemplateErrorList te)
         {
             XElement element = node as XElement;
             if (element != null)
@@ -243,7 +246,8 @@ namespace OpenDocx
                         {
                             var newPara = new XElement(element);
                             var newMeta = newPara.Elements().Where(n => s_MetaToForceToBlock.Contains(n.Name)).First();
-                            newMeta.ReplaceWith(CreateRunErrorMessage("Error: Unmatched metadata can't be in paragraph with other text", te));
+                            string errorMessage = string.Format("Error: The '{0}' must either be in the same paragraph as its matching {1}, or in a paragraph by itself.", child.Name.LocalName.ToLower(), s_MatchingFieldNames[child.Name]);
+                            newMeta.ReplaceWith(CreateRunErrorMessage(child, errorMessage, te));
                             return newPara;
                         }
                         // force single metadata up to block level
@@ -266,7 +270,7 @@ namespace OpenDocx
                         else if (c.Name == OD.EndList)
                         {
                             if (stack.Pop() != OD.List)
-                                return CreateContextErrorMessage(element, "Error: Mismatch Repeat / EndRepeat at run level", te);
+                                return CreateContextErrorMessage(element, c, "Error: Mismatched 'list' / 'endlist' at run level", te);
                         }
                         else if (c.Name == OD.If)
                         {
@@ -275,17 +279,17 @@ namespace OpenDocx
                         else if (c.Name == OD.ElseIf)
                         {
                             if (stack.Peek() != OD.If)
-                                return CreateContextErrorMessage(element, "Error: ElseConditional outside of Conditional at run level", te);
+                                return CreateContextErrorMessage(element, c, "Error: 'elseif' outside of 'if' / 'endif' at run level", te);
                         }
                         else if (c.Name == OD.Else)
                         {
                             if (stack.Peek() != OD.If)
-                                return CreateContextErrorMessage(element, "Error: Else outside of Conditional at run level", te);
+                                return CreateContextErrorMessage(element, c, "Error: 'else' outside of 'if' / 'endif' at run level", te);
                         }
                         else if (c.Name == OD.EndIf)
                         {
                             if (stack.Pop() != OD.If)
-                                return CreateContextErrorMessage(element, "Error: Mismatch Conditional / EndConditional at run level", te);
+                                return CreateContextErrorMessage(element, c, "Error: Mismatched 'if' / 'endif' at run level", te);
                         }
                     }
                     return new XElement(element.Name,
@@ -302,7 +306,7 @@ namespace OpenDocx
         // The following method is written using tree modification, not RPFT, because it is easier to write in this fashion.
         // These types of operations are not as easy to write using RPFT.
         // Unless you are completely clear on the semantics of LINQ to XML DML, do not make modifications to this method.
-        private static void NormalizeRepeatAndConditional(XElement xDoc, TemplateError te)
+        private static void NormalizeRepeatAndConditional(XElement xDoc, TemplateErrorList te)
         {
             int repeatDepth = 0;
             int conditionalDepth = 0;
@@ -366,7 +370,7 @@ namespace OpenDocx
                     var matchingEnd = metadata.ElementsAfterSelf(matchingEndName).FirstOrDefault(end => { return (int)end.Attribute(OD.Depth) == depth; });
                     if (matchingEnd == null)
                     {
-                        metadata.ReplaceWith(CreateParaErrorMessage(string.Format("{0} does not have matching {1}", metadata.Name.LocalName, matchingEndName.LocalName), te));
+                        metadata.ReplaceWith(CreateParaErrorMessage(metadata, string.Format("Error: The '{0}' does not have a matching '{1}'", metadata.Name.LocalName, matchingEndName.LocalName), te));
                         continue;
                     }
                     metadata.RemoveNodes(); // LS: are there any?? why would there be?
@@ -396,23 +400,63 @@ namespace OpenDocx
             }
         }
 
-        private static void ProcessOrphanEndRepeatEndConditional(XElement xDocRoot, TemplateError te)
+        private static void ProcessOrphanEndRepeatEndConditional(XElement xDocRoot, TemplateErrorList te)
         {
             foreach (var element in xDocRoot.Descendants(OD.EndList).ToList())
             {
-                var error = CreateContextErrorMessage(element, "Error: endlist without matching list", te);
+                var error = CreateContextErrorMessage(element, element, "Error: 'endlist' without matching 'list'", te);
                 element.ReplaceWith(error);
             }
             foreach (var element in xDocRoot.Descendants(OD.EndIf).ToList())
             {
-                var error = CreateContextErrorMessage(element, "Error: endif without matching if", te);
+                var error = CreateContextErrorMessage(element, element, "Error: 'endif' without matching 'if'", te);
                 element.ReplaceWith(error);
+            }
+        }
+
+        private class TemplateErrorList
+        {
+            public List<TemplateError> ErrorList = new List<TemplateError>();
+
+            public bool HasError
+            {
+                get
+                {
+                    return this.ErrorList.Count > 0;
+                }
+            }
+
+            public void Add(string fieldId, string fieldText, string errorMessage)
+            {
+                ErrorList.Add(new TemplateError() { fieldId = fieldId, fieldText = fieldText, message = errorMessage });
             }
         }
 
         private class TemplateError
         {
-            public bool HasError = false;
+            public string fieldId;
+            public string fieldText;
+            public string message;
+
+            public override string ToString()
+            {
+                if (string.IsNullOrEmpty(fieldId))
+                {
+                    if (string.IsNullOrEmpty(fieldText))
+                    {
+                        return message;
+                    }
+                    return string.Format("(In field \"{0}\"): {1}", fieldText, message);
+                }
+                else if (string.IsNullOrEmpty(fieldText))
+                {
+                    return string.Format("Field \"{0}\": {1}", fieldId, message);
+                }
+                else
+                {
+                    return string.Format("Field {0} (\"{1}\"): {2}", fieldId, fieldText, message);
+                }
+            }
         }
 
         private static void SimplifyTemplateMarkup(WordprocessingDocument wordDoc)
@@ -437,20 +481,22 @@ namespace OpenDocx
             MarkupSimplifier.SimplifyMarkup(wordDoc, settings);
         }
 
-        private static object CreateContextErrorMessage(XElement element, string errorMessage, TemplateError templateError)
+        private static object CreateContextErrorMessage(XElement element, XElement meta, string errorMessage, TemplateErrorList errors)
         {
             XElement para = element.Descendants(W.p).FirstOrDefault();
             XElement run = element.Descendants(W.r).FirstOrDefault();
-            var errorRun = CreateRunErrorMessage(errorMessage, templateError);
+            var errorRun = CreateRunErrorMessage(meta, errorMessage, errors);
             if (para != null)
                 return new XElement(W.p, errorRun);
             else
                 return errorRun;
         }
 
-        private static XElement CreateRunErrorMessage(string errorMessage, TemplateError templateError)
+        private static XElement CreateRunErrorMessage(XElement meta, string errorMessage, TemplateErrorList errors)
         {
-            templateError.HasError = true;
+            string fieldId = meta?.Attribute(OD.Id)?.Value;
+            string fieldText = meta?.Value;
+            errors.Add(fieldId, fieldText, errorMessage);
             var errorRun = new XElement(W.r,
                 new XElement(W.rPr,
                     new XElement(W.color, new XAttribute(W.val, "FF0000")),
@@ -459,9 +505,11 @@ namespace OpenDocx
             return errorRun;
         }
 
-        private static XElement CreateParaErrorMessage(string errorMessage, TemplateError templateError)
+        private static XElement CreateParaErrorMessage(XElement meta, string errorMessage, TemplateErrorList errors)
         {
-            templateError.HasError = true;
+            string fieldId = meta?.Attribute(OD.Id)?.Value;
+            string fieldText = meta?.Value;
+            errors.Add(fieldId, fieldText, errorMessage);
             var errorPara = new XElement(W.p,
                 new XElement(W.r,
                     new XElement(W.rPr,
@@ -471,7 +519,7 @@ namespace OpenDocx
             return errorPara;
         }
 
-        private static object AddListPunctuationPlaceholders(XNode node, TemplateError te)
+        private static object AddListPunctuationPlaceholders(XNode node, TemplateErrorList te)
         {
             XElement element = node as XElement;
             if (element != null)
@@ -539,7 +587,7 @@ namespace OpenDocx
 
         static XElement PWrap(params object[] content) => new XElement(W.p, content);
 
-        static object ContentReplacementTransform(XNode node, FieldTransformIndex xm, TemplateError templateError)
+        static object ContentReplacementTransform(XNode node, FieldTransformIndex xm, TemplateErrorList templateError)
         {
             XElement element = node as XElement;
             if (element != null)

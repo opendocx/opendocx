@@ -5,7 +5,7 @@ const version = require('./version');
 const semver = require('semver')
 
 class XmlAssembler {
-    constructor (context, locals = null) {XmlAssembler
+    constructor (context, locals = null) {
         this.context = context;
         this.locals = locals;
         this.missing = {};

@@ -24,6 +24,17 @@ describe('Assembling documents from DOCX templates', function() {
         const validation = await templater.validateDocument({documentFile: result.Document});
         assert.ok(!validation.HasErrors, validation.ErrorList);
     });
+    it('should assemble (without errors) a document based on the 2lists.docx template', async function() {
+        const templatePath = testUtil.GetTemplatePath('2lists.docx');
+        const compileResult = await openDocx.compileDocx(templatePath);
+        const data = BradyTestData;
+
+        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), data);
+        assert.equal(result.HasErrors, false);
+        const validation = await templater.validateDocument({documentFile: result.Document});
+        // todo: figure out how to look in the file and make sure the text is right :-)
+        assert.ok(!validation.HasErrors, validation.ErrorList);
+    });
     it('should assemble (without errors) a document based on the TestNest2.docx template', async function() {
         const templatePath = testUtil.GetTemplatePath('TestNest2.docx');
         const compileResult = await openDocx.compileDocx(templatePath);
