@@ -168,7 +168,7 @@ namespace OpenDocx
                         }
                         // else fall through to (slower) case
                     }
-                    if (paraContents.Contains(FieldRecognizer.EmbedBegin))
+                    if (paraContents.Contains(FieldRecognizer.EmbedBegin) && paraContents.Contains(FieldRecognizer.FieldBegin))
                     {
                         var runReplacementInfo = new List<XElement>();
                         var placeholderText = Guid.NewGuid().ToString();
@@ -180,7 +180,7 @@ namespace OpenDocx
                                 + Regex.Escape(FieldRecognizer.FieldEnd)
                                 + "\\s*"
                                 + Regex.Escape(FieldRecognizer.EmbedEnd));
-                        OpenXmlRegex.Replace(new[] { element }, r, placeholderText, (para, match) =>
+                        var replacedCount = OpenXmlRegex.Replace(new[] { element }, r, placeholderText, (para, match) =>
                         {
                             var matchString = match.Value.Trim();
                             var content = matchString.Substring(
@@ -195,22 +195,24 @@ namespace OpenDocx
                             }
                             return false;
                         }, false);
-
-                        var newPara = new XElement(element);
-                        foreach (var elem in runReplacementInfo)
+                        if (replacedCount > 0)
                         {
-                            var runToReplace = newPara.Descendants(W.r).FirstOrDefault(rn => rn.Value == placeholderText
-                                                                                             && rn.Parent.Name != Templater.OD.Content);
-                            if (runToReplace == null)
-                                throw new InvalidOperationException("Internal error");
-                            else
+                            var newPara = new XElement(element);
+                            foreach (var elem in runReplacementInfo)
                             {
-                                //elem.Add(runToReplace); // does this work? what does it do?
-                                runToReplace.ReplaceWith(elem);
+                                var runToReplace = newPara.Descendants(W.r).FirstOrDefault(rn => rn.Value == placeholderText
+                                                                                                 && rn.Parent.Name != Templater.OD.Content);
+                                if (runToReplace == null)
+                                    throw new InvalidOperationException("Internal error");
+                                else
+                                {
+                                    //elem.Add(runToReplace); // does this work? what does it do?
+                                    runToReplace.ReplaceWith(elem);
+                                }
                             }
+                            var coalescedParagraph = WordprocessingMLUtil.CoalesceAdjacentRunsWithIdenticalFormatting(newPara);
+                            return IdentifyAndTransformFields(coalescedParagraph, fieldAccumulator);
                         }
-                        var coalescedParagraph = WordprocessingMLUtil.CoalesceAdjacentRunsWithIdenticalFormatting(newPara);
-                        return IdentifyAndTransformFields(coalescedParagraph, fieldAccumulator);
                     }
                 }
 

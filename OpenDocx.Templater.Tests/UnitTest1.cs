@@ -24,6 +24,7 @@ namespace OpenDocxTemplater.Tests
         [InlineData("abconditional.docx")]
         [InlineData("crasher.docx")]
         [InlineData("redundant_ifs.docx")]
+        [InlineData("syntax_crash.docx")]
         public void CompileTemplate(string name)
         {
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");

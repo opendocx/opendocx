@@ -19,6 +19,10 @@ describe('Producing files necessary for .NET Unit Tests to run', function() {
         const result = await generateFilesFor('Lists.docx')
         assert.equal(fs.existsSync(result.ExtractedLogic), true);
     })
+    it('generates files for syntax_crash.docx', async function() {
+        const result = await generateFilesFor('syntax_crash.docx')
+        assert.equal(fs.existsSync(result.ExtractedLogic), true);
+    })
     it('generates files for MissingEndIfPara.docx', async function() {
         assert.rejects( async () => {
             const result = await generateFilesFor('MissingEndIfPara.docx')
