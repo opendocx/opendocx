@@ -56,6 +56,7 @@ exports.compileDocx = async function(templatePath) {
     // result looks like:
     // {
     //      HasErrors: false,
+    //      Errors: [], // if there are errors, this is an array of strings
     //      ExtractedLogic: "c:\path\to\template.docx.js",
     //      ExtractedLogicTree: "c:\path\to\template.docx.json",
     //      DocxGenTemplate: "c:\path\to\template.docxgen.docx",

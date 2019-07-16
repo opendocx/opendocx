@@ -47,11 +47,11 @@ class XmlAssembler {
     
     define(ident, expr) {
         if (this.contextStack.empty()) {
-            throw 'internal error: Cannot define a member on an empty context stack';
+            throw new Error('internal error: Cannot define a member on an empty context stack');
         }
         const frame = this.contextStack.peek();
         if (frame.type != 'Object') {
-            throw `Internal error: cannot define a member on a ${frame.type} context`;
+            throw new Error(`Internal error: cannot define a member on a ${frame.type} context`);
         }
     
         const evaluator = Engine.compileExpr(expr); // these are cached so this should be fast
@@ -72,11 +72,11 @@ class XmlAssembler {
     
     beginCondition(ident, expr, persist = true) {
         if (this.contextStack.empty()) {
-            throw 'internal error: Cannot define a condition on an empty context stack';
+            throw new Error('internal error: Cannot define a condition on an empty context stack');
         }
         const frame = this.contextStack.peek();
         if (frame.type != 'Object') {
-            throw `Internal error: cannot define a condition on a ${frame.type} context`;
+            throw new Error(`Internal error: cannot define a condition on a ${frame.type} context`);
         }
         const evaluator = Engine.compileExpr(expr); // these are cached so this should be fast
         const value = frame.evaluate(evaluator); // we need to make sure this is memoized to avoid unnecessary re-evaluation
