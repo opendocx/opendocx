@@ -55,4 +55,8 @@ describe('Producing files necessary for .NET Unit Tests to run', function() {
         const result = await generateFilesFor('NonBlockEndIf.docx')
         assert.equal(fs.existsSync(result.ExtractedLogic), true);
     })
+    it('generates files for Syntax.docx', async function() {
+        const result = await generateFilesFor('Syntax.docx')
+        assert.equal(fs.existsSync(result.ExtractedLogic), true);
+    })
 })

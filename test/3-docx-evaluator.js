@@ -54,6 +54,23 @@ describe('Generating XML data for DOCX templates (white box)', function() {
         assert.equal(str,
             '<?xml version="1.0"?><_odx><a2>true</a2><b2>false</b2></_odx>');
     })
+    it('xml should include TF answers for content fields separate from if fields', async function() {
+        const templatePath = testUtil.GetTemplatePath('Syntax.docx');
+        let jsFile = templatePath + '.js';
+        if (!fs.existsSync(jsFile)) {
+            const result = await openDocx.compileDocx(templatePath, false);
+            assert.equal(result.HasErrors, false);
+            assert.equal(fs.existsSync(result.ExtractedLogic), true);
+            assert.equal(fs.existsSync(result.DocxGenTemplate), true);
+            jsFile = result.ExtractedLogic;
+        }
+        const data = {IsTaxPlanning: false};
+        // now evaluate the helper against this data context, to test its functionality
+        const str = new XmlAssembler(data).assembleXml(jsFile);
+        fs.writeFileSync(templatePath + '.asmdata.xml', str);
+        assert.equal(str,
+            '<?xml version="1.0"?><_odx><a>false</a><a2>false</a2></_odx>');
+    })
     it('list testing', async function() {
         const templatePath = testUtil.GetTemplatePath('Lists.docx');
         const result = await openDocx.compileDocx(templatePath);
