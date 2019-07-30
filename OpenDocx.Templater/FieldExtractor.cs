@@ -241,7 +241,7 @@ namespace OpenDocx
             return fieldText.Trim()
                             .Replace('“', '"') // replace curly quotes with straight ones
                             .Replace('”', '"')
-                            .Replace("\u200b", null) // remove zero-width spaces -- potentially inserted via Macro or Word add-in for purposes of making the template look better
+                            .Replace("\u200b", null) // remove zero-width spaces -- potentially inserted via Macro or Word add-in for purposes of allowing word wrap
                             .Replace("\u200c", null);
         }
     }
