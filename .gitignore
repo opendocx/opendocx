@@ -8,6 +8,7 @@
 *.cs.bak
 test/history/*
 test/templates/Engagement*
+test/templates/FullEngagementLetter.docx
 
 # Logs
 logs
