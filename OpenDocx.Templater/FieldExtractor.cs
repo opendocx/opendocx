@@ -182,7 +182,7 @@ namespace OpenDocx
                                 + Regex.Escape(FieldRecognizer.EmbedEnd));
                         var replacedCount = OpenXmlRegex.Replace(new[] { element }, r, placeholderText, (para, match) =>
                         {
-                            var matchString = match.Value.Trim();
+                            var matchString = match.Value.Trim().Replace("\u0001",""); // unrecognized codes/elements returned as \u0001; strip these
                             var content = matchString.Substring(
                                     FieldRecognizer.EmbedBegin.Length,
                                     matchString.Length - FieldRecognizer.EmbedBegin.Length - FieldRecognizer.EmbedEnd.Length
@@ -214,6 +214,12 @@ namespace OpenDocx
                             return IdentifyAndTransformFields(coalescedParagraph, fieldAccumulator);
                         }
                     }
+                }
+                if (element.Name == W.lastRenderedPageBreak)
+                {
+                    // documents assembled from templates will almost always change pagination, so remove Word's pagination hints
+                    // (also because they're not handled cleanly by OXPT)
+                    return null;
                 }
 
                 return new XElement(element.Name,

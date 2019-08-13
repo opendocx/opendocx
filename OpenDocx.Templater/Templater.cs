@@ -468,11 +468,11 @@ namespace OpenDocx
                 RemoveContentControls = false,
                 RemoveEndAndFootNotes = false,
                 RemoveFieldCodes = false,
-                RemoveLastRenderedPageBreak = false,
+                RemoveLastRenderedPageBreak = true,
                 RemovePermissions = false,
                 RemoveProof = true,
                 RemoveRsidInfo = true,
-                RemoveSmartTags = true,
+                RemoveSmartTags = false, // todo: change this back to true once we have patched OXPT to make it work right
                 RemoveSoftHyphens = false,
                 ReplaceTabsWithSpaces = false,
                 RemoveMarkupForDocumentComparison = true,
