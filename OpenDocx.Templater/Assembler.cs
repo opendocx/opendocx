@@ -40,7 +40,11 @@ namespace OpenDocx
         // when calling from Node.js via Edge, we only get to pass one parameter
         public object AssembleDocument(dynamic input)
         {
-            using (var xmlData = new StringReader((string)input.xmlData))
+            // EdgeJS is messing up the string encoding. Node.js marshals the string in a UTF-8 encoded byte array,
+            // but EdgeJS decodes it using the system's default ANSI encoding (usually ISO-8859-1, at least on Windows).
+            // So we have to undo it:
+            var ms = new MemoryStream(System.Text.Encoding.GetEncoding(28591 /*ISO-8859-1*/).GetBytes((string)input.xmlData));
+            using (var xmlData = new StreamReader(ms, System.Text.Encoding.UTF8))
             {
                 try
                 {
