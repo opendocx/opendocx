@@ -1,5 +1,5 @@
-const opendocx = require('../index');
-const templater = require('../docx-templater');
+const opendocx = require('../src/index');
+const templater = require('../src/docx-templater');
 //const TestHelperTypes = yatte.TestHelperTypes;
 const assert = require('assert');
 const fs = require('fs');

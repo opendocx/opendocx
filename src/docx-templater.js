@@ -1,5 +1,5 @@
 const path = require('path');
-const baseNetAppPath = path.join(__dirname, 'OpenDocx.Templater/bin/Debug/netcoreapp2.0');
+const baseNetAppPath = path.join(__dirname, '..', 'OpenDocx.Templater', 'bin', 'Debug', 'netcoreapp2.0');
 //console.log('baseNetAppPath = ' + baseNetAppPath);
 process.env.EDGE_USE_CORECLR = '2.0';
 process.env.EDGE_APP_ROOT = baseNetAppPath;

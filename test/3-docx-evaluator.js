@@ -1,7 +1,7 @@
-const openDocx = require("../index");
+const openDocx = require("../src/index");
 const assert = require('assert');
 const fs = require('fs');
-const XmlAssembler = require('../docx-evaluator');
+const XmlAssembler = require('../src/docx-evaluator');
 const testUtil = require('./test-utils');
 
 describe('Generating XML data for DOCX templates (white box)', function() {
@@ -98,7 +98,7 @@ describe('Generating XML data for DOCX templates (white box)', function() {
         };
         // now evaluate the helper against this data context, to test its functionality
         const str = new XmlAssembler(data).assembleXml(jsFile);
-        fs.writeFileSync(templatePath + '.asmdata.xml', str);
+        fs.writeFileSync(templatePath + '.unans.asmdata.xml', str);
         assert.equal(str,
             '<?xml version="1.0"?><_odx><a>[Testator.Name]</a><b>[Testator.City]</b><c>[Testator.County]</c><d>[Testator.State]</d><e>[Representative.Name]</e><f>[Representative.City]</f><g>[Representative.County]</g><h>[Representative.State]</h><i>[Representative.Gender.HeShe]</i><n2>false</n2><v></v><w>Utah</w><x>26th day of April, 2019</x><y>[Testator.Gender.HimHer]</y><z>[Testator.Gender.HisHer]</z><B></B><C>UTAH</C><D>[NotaryCounty|upper]</D><E></E><F>[WitnessNames[0]]</F><G></G></_odx>');
 
@@ -146,6 +146,27 @@ describe('Generating XML data for DOCX templates (white box)', function() {
         str = new XmlAssembler({}).assembleXml(jsFile);
         assert.equal(str,
             '<?xml version="1.0"?><_odx><a2>false</a2></_odx>');
+        fs.writeFileSync(templatePath + '.asmdata2.xml', str);
+        asmResult = openDocx.assembleDocx(templatePath, templatePath + '-assembled2.docx', {})
+        assert(!asmResult.HasErrors)
+    })
+    it('should create the expected XML for ifpoa.docx', async function() {
+        const templatePath = testUtil.GetTemplatePath('ifpoa.docx');
+        const result = await openDocx.compileDocx(templatePath, false);
+        assert.equal(result.HasErrors, false);
+        const jsFile = result.ExtractedLogic;
+        //const compiledTemplate = result.DocxGenTemplate;
+        let data = { ClientName: 'John Doe', DPOAType: new String('Contingent') }
+        let str = new XmlAssembler(data).assembleXml(jsFile);
+        assert.equal(str,
+            '<?xml version="1.0"?><_odx><a>John Doe</a><c2>true</c2><b2>false</b2></_odx>');
+        fs.writeFileSync(templatePath + '.asmdata1.xml', str);
+        let asmResult = openDocx.assembleDocx(templatePath, templatePath + '-assembled1.docx', data)
+        assert(!asmResult.HasErrors)
+        // now evaluate the helper against NO data context, to test its functionality
+        str = new XmlAssembler({}).assembleXml(jsFile);
+        assert.equal(str,
+            '<?xml version="1.0"?><_odx><a>[ClientName]</a><c2>false</c2><b2>false</b2></_odx>');
         fs.writeFileSync(templatePath + '.asmdata2.xml', str);
         asmResult = openDocx.assembleDocx(templatePath, templatePath + '-assembled2.docx', {})
         assert(!asmResult.HasErrors)

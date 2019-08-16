@@ -1,7 +1,7 @@
-const openDocx = require("../index");
+const openDocx = require("../src/index");
 const assert = require('assert');
 const fs = require('fs');
-const evaluator = require('../docx-evaluator');
+const evaluator = require('../src/docx-evaluator');
 const testUtil = require('./test-utils');
 
 describe('Producing files necessary for .NET Unit Tests to run', function() {
@@ -57,6 +57,14 @@ describe('Producing files necessary for .NET Unit Tests to run', function() {
     })
     it('generates files for Syntax.docx', async function() {
         const result = await generateFilesFor('Syntax.docx')
+        assert.equal(fs.existsSync(result.ExtractedLogic), true);
+    })
+    it('generates files for acp.docx', async function() {
+        const result = await generateFilesFor('acp.docx')
+        assert.equal(fs.existsSync(result.ExtractedLogic), true);
+    })
+    it('generates files for ifpoa.docx', async function() {
+        const result = await generateFilesFor('ifpoa.docx')
         assert.equal(fs.existsSync(result.ExtractedLogic), true);
     })
 })

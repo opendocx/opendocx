@@ -1,6 +1,6 @@
 'use strict';
 
-const openDocx = require("../index");
+const openDocx = require("../src/index");
 const assert = require('assert');
 const fs = require('fs');
 const testUtil = require('./test-utils');

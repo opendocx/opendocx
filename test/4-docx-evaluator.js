@@ -1,5 +1,5 @@
-const openDocx = require("../index");
-const templater = require('../docx-templater');
+const openDocx = require("../src/index");
+const templater = require('../src/docx-templater');
 const assert = require('assert');
 const testUtil = require('./test-utils');
 
@@ -10,6 +10,17 @@ describe('Assembling documents from DOCX templates', function() {
         const data = SimpleWillDemoContext;
         // now assemble the document against this data context
         let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), data);
+        assert.equal(result.HasErrors, false);
+        const validation = await templater.validateDocument({documentFile: result.Document});
+        assert.ok(!validation.HasErrors, validation.ErrorList);
+    });
+    it('should assemble (without errors) a document based on the SimpleWill2.docx template', async function() {
+        const templatePath = testUtil.GetTemplatePath('SimpleWill2.docx');
+        //const compileResult = await openDocx.compileDocx(templatePath);
+        const data = SimpleWillDemoContext;
+        // now assemble the document against this data context
+        let outFile = testUtil.FileNameAppend(templatePath, '-assembled')
+        let result = await openDocx.assembleDocx(templatePath, outFile, data, null, outFile + '.xml');
         assert.equal(result.HasErrors, false);
         const validation = await templater.validateDocument({documentFile: result.Document});
         assert.ok(!validation.HasErrors, validation.ErrorList);
@@ -90,6 +101,7 @@ const SimpleWillDemoContext = {
     SigningDate: new Date(2019, 2, 10),
     Witness1Name: "John Doe",
     Witness2Name: "Marilyn Monroe",
+    WitnessNames: [ "Jürgen Kemper", "Marlene Dietrich", "Hedy Lamar" ],
     NotaryCounty: "Allegheny",
     NominateBackup: true,
     Representative: {
