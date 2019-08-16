@@ -33,7 +33,6 @@ const redundant_if_logic_tree = [
 {
     "type": "If",
     "expr": "x",
-    "firstRef": true,
     "exprAst": {
         "type": "Identifier",
         "name": "x",
@@ -63,7 +62,6 @@ const redundant_if_logic_tree = [
 }, {
     "type": "If",
     "expr": "x",
-    "firstRef": false,
     "exprAst": {
         "type": "Identifier",
         "name": "x",
@@ -92,7 +90,6 @@ const TestNestLogicTree = [
     {
         type: "If",
         expr: "x",
-        firstRef: true,
         exprAst: {
             type: "Identifier",
             name: "x",
@@ -132,7 +129,6 @@ const TestNestLogicTree = [
             {
                 type: "ElseIf",
                 expr: "y",
-                firstRef: true,
                 exprAst: {
                     type: "Identifier",
                     name: "y",

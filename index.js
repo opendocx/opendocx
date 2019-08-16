@@ -64,7 +64,7 @@ exports.compileDocx = async function(templatePath) {
     return ttpl;
 }
 
-exports.assembleDocx = async function (templatePath, outputFile, data, locals) {
+exports.assembleDocx = async function (templatePath, outputFile, data, locals, optionalSaveXmlFile) {
     // templatePath should have been compiled (previously) so the expected files will be on disk
     // but if not we'll compile it now
     let extractedLogic = templatePath + '.js';
@@ -92,6 +92,9 @@ exports.assembleDocx = async function (templatePath, outputFile, data, locals) {
         xmlData: dataAssembler.assembleXml(extractedLogic),
         documentFile: outputFile,
     };
+    if (optionalSaveXmlFile) {
+        fs.writeFileSync(optionalSaveXmlFile, options.xmlData);
+    }
     let result = await docxTemplater.assembleDocument(options);
     result.Missing = Object.keys(dataAssembler.missing)
     // result looks like:
@@ -153,14 +156,14 @@ ${serializeContextInDataJs(astNode.contentArray, a0, a0, '', astNode)}
 h.endList();`
 
         case OD.If:
-            return `if(h.beginCondition('${atom}','${astNode.expr}',${astNode.firstRef}))
+            return `if(h.beginCondition('${atom}','${astNode.expr}'))
 {
 ${serializeContentArrayAsDataJs(astNode.contentArray, astNode)}
 }`
 
         case OD.ElseIf:
             return `} else {
-if(h.beginCondition('${atom}','${astNode.expr}',${astNode.firstRef}))
+if(h.beginCondition('${atom}','${astNode.expr}'))
 {
 ${serializeContentArrayAsDataJs(astNode.contentArray, astNode)}
 }`
