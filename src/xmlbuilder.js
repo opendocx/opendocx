@@ -63,7 +63,7 @@ class XmlDataBuilder {
   set (ident, value) {
     let currentFrame = this.peek()
     if (ident in currentFrame) {
-      if (currentFrame[ident] !== value) {
+      if (currentFrame[ident].valueOf() !== value.valueOf()) {
         throw new Error('Error while creating XML data file: data mutation?')
       }
     } else {
@@ -123,6 +123,11 @@ class XmlDataBuilder {
 module.exports = XmlDataBuilder
 
 const escapeXml = function (str) {
+  str = str.valueOf()
+  if (typeof str !== 'string') {
+    console.log(`Unexpected: while building XML, escapeXml called on a ${typeof str}!`)
+    str = str.toString()
+  }
   return str.replace(/[<>&'"]/g, function (c) {
       switch (c) {
           case '<': return '&lt;';

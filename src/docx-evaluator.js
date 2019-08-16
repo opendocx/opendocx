@@ -57,6 +57,9 @@ class XmlAssembler {
     
         const evaluator = Engine.compileExpr(expr); // these are cached so this should be fast
         let value = frame.evaluate(evaluator); // we need to make sure this is memoized to avoid unnecessary re-evaluation
+        if (value && (typeof value === 'object') && (value.errors || value.missing)) { // value is a yatte EvaluationResult, probably because of nested template evaluation
+            value = value.valueOf() // disregard everything but the actual evaluated value
+        }
         if (value === null || typeof value === 'undefined') {
             this.missing[expr] = true;
             value = '[' + expr + ']'; // missing value placeholder
@@ -65,9 +68,6 @@ class XmlAssembler {
             this.xmlStack.set(ident, undefined);
         } else {
             this.xmlStack.set(ident, value);
-            if (typeof value === 'string') {
-                value = escapeXml(value);
-            }
         }
     }
     
