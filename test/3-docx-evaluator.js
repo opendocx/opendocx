@@ -171,6 +171,31 @@ describe('Generating XML data for DOCX templates (white box)', function() {
         asmResult = openDocx.assembleDocx(templatePath, templatePath + '-assembled2.docx', {})
         assert(!asmResult.HasErrors)
     })
+    it('should create the expected XML for BeneficiaryList.docx', async function() {
+        const templatePath = testUtil.GetTemplatePath('BeneficiaryList.docx');
+        const result = await openDocx.compileDocx(templatePath, false);
+        assert.equal(result.HasErrors, false);
+        const jsFile = result.ExtractedLogic;
+        //const compiledTemplate = result.DocxGenTemplate;
+        let data = { Beneficiaries: [
+            { Name: "Joe Bloggs" },
+            { Name: "Bob Syuruncle" },
+            { Name: "Joe Blow" },
+            { Name: "Astruas Bob" },
+        ] }
+        let str = new XmlAssembler(data).assembleXml(jsFile);
+        const expectedXml = '<?xml version="1.0"?><_odx><b><b0><a>Joe Bloggs</a><b1/></b0></b><c><c0><a>Bob Syuruncle</a><c1/></c0><c0><a>Joe Blow</a><c1/></c0></c><e2>true</e2><d>Astruas Bob</d></_odx>';
+        assert.equal(str, expectedXml);
+        fs.writeFileSync(templatePath + '.asmdata1.xml', str);
+        let asmResult = openDocx.assembleDocx(templatePath, templatePath + '-assembled1.docx', data)
+        assert(!asmResult.HasErrors)
+        // now evaluate again with data in locals, and something else in scope, and make sure it still works
+        str = new XmlAssembler({global:'stuff'}, data).assembleXml(jsFile);
+        assert.equal(str, expectedXml);
+        fs.writeFileSync(templatePath + '.asmdata2.xml', str);
+        asmResult = openDocx.assembleDocx(templatePath, templatePath + '-assembled2.docx', data)
+        assert(!asmResult.HasErrors)
+    })
 })
 
 const SimpleWillDemoContext = {
