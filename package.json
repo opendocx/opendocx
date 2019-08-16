@@ -1,15 +1,16 @@
 {
   "name": "opendocx-node",
-  "version": "0.8.5-beta.0",
+  "version": "0.8.6-beta.0",
   "description": "OpenDocx document assembly for Node.js",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
     "test": "mocha",
-    "build": "genversion version.js",
-    "bump": "npm version --no-git-tag-version prepatch --preid=alpha",
+    "build": "genversion src/version.js && dotnet build",
+    "bump": "npm version --no-git-tag-version prepatch --preid=beta",
     "preversion-disabled": "npm test",
     "version": "npm run build"
   },
+  "comment": "npm version (above) gets one of these: patch, minor, major, prepatch, preminor, premajor, prerelease",
   "keywords": [
     "OpenDocx",
     "document",
@@ -35,7 +36,7 @@
     "path": "^0.12.7",
     "semver": "^6.1.1",
     "util": "^0.11.1",
-    "yatte": "^0.9.8-beta.0"
+    "yatte": "^0.9.9-beta.0"
   },
   "devDependencies": {
     "date-fns": "^1.30.1",
