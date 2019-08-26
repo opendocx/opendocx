@@ -40,7 +40,18 @@ describe('Assembling documents from DOCX templates', function() {
         const compileResult = await openDocx.compileDocx(templatePath);
         const data = BradyTestData;
 
-        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), data);
+        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), {Date}, data);
+        assert.equal(result.HasErrors, false);
+        const validation = await templater.validateDocument({documentFile: result.Document});
+        // todo: figure out how to look in the file and make sure the text is right :-)
+        assert.ok(!validation.HasErrors, validation.ErrorList);
+    });
+    it('should assemble (without errors) a document based on the 2listsfilter.docx template', async function() {
+        const templatePath = testUtil.GetTemplatePath('2listsfilter.docx');
+        const compileResult = await openDocx.compileDocx(templatePath);
+        const data = BradyTestData;
+
+        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), {Date}, data, testUtil.FileNameAppend(templatePath, '-asmdata.xml'));
         assert.equal(result.HasErrors, false);
         const validation = await templater.validateDocument({documentFile: result.Document});
         // todo: figure out how to look in the file and make sure the text is right :-)
