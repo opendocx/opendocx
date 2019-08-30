@@ -63,7 +63,7 @@ class XmlDataBuilder {
   set (ident, value) {
     let currentFrame = this.peek()
     if (ident in currentFrame) {
-      if (currentFrame[ident].valueOf() !== value.valueOf()) {
+      if ((currentFrame[ident] && currentFrame[ident].valueOf()) !== (value && value.valueOf())) {
         throw new Error('Error while creating XML data file: data mutation?')
       }
     } else {
