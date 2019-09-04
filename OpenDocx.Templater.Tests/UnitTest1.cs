@@ -22,9 +22,9 @@ namespace OpenDocxTemplater.Tests
         [InlineData("Lists.docx")]
         [InlineData("team_report.docx")]
         [InlineData("abconditional.docx")]
-        [InlineData("crasher.docx")]
         [InlineData("redundant_ifs.docx")]
         [InlineData("syntax_crash.docx")]
+        [InlineData("acp.docx")]
         public void CompileTemplate(string name)
         {
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
@@ -60,12 +60,13 @@ namespace OpenDocxTemplater.Tests
         }
 
         [Theory]
-        [InlineData("MissingEndIfPara.docx")]
-        [InlineData("MissingEndIfRun.docx")]
-        [InlineData("MissingIfRun.docx")]
-        [InlineData("MissingIfPara.docx")]
+        //[InlineData("MissingEndIfPara.docx")]
+        //[InlineData("MissingEndIfRun.docx")]
+        //[InlineData("MissingIfRun.docx")]
+        //[InlineData("MissingIfPara.docx")]
         [InlineData("NonBlockIf.docx")]
         [InlineData("NonBlockEndIf.docx")]
+        //[InlineData("crasher.docx")]
         public void CompileErrors(string name)
         {
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
@@ -85,6 +86,17 @@ namespace OpenDocxTemplater.Tests
             Assert.True(File.Exists(compileResult.DocxGenTemplate));
         }
 
+        [Theory]
+        [InlineData("SmartTags.docx")]
+        /*[InlineData("WillHP.docx")]*/
+        public void ValidateDocument(string name)
+        {
+            DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
+            FileInfo docx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+            var validator = new Validator();
+            var result = validator.ValidateDocument(docx.FullName);
+            Assert.True(result.HasErrors);
+        }
         //[Fact]
         //public void CompileTemplateSync()
         //{
