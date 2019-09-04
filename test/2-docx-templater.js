@@ -15,6 +15,22 @@ describe('Producing files necessary for .NET Unit Tests to run', function() {
         const result = await generateFilesFor('SimpleWill.docx')
         assert.equal(fs.existsSync(result.ExtractedLogic), true);
     })
+    it('generates files for nested.docx', async function() {
+        const result = await generateFilesFor('nested.docx')
+        assert.equal(fs.existsSync(result.ExtractedLogic), true);
+    })
+    it('generates files for redundant_ifs.docx', async function() {
+        const result = await generateFilesFor('redundant_ifs.docx')
+        assert.equal(fs.existsSync(result.ExtractedLogic), true);
+    })
+    it('generates files for team_report.docx', async function() {
+        const result = await generateFilesFor('team_report.docx')
+        assert.equal(fs.existsSync(result.ExtractedLogic), true);
+    })
+    it('generates files for abconditional.docx', async function() {
+        const result = await generateFilesFor('abconditional.docx')
+        assert.equal(fs.existsSync(result.ExtractedLogic), true);
+    })
     it('generates files for Lists.docx', async function() {
         const result = await generateFilesFor('Lists.docx')
         assert.equal(fs.existsSync(result.ExtractedLogic), true);
@@ -22,30 +38,6 @@ describe('Producing files necessary for .NET Unit Tests to run', function() {
     it('generates files for syntax_crash.docx', async function() {
         const result = await generateFilesFor('syntax_crash.docx')
         assert.equal(fs.existsSync(result.ExtractedLogic), true);
-    })
-    it('generates files for MissingEndIfPara.docx', async function() {
-        assert.rejects( async () => {
-            const result = await generateFilesFor('MissingEndIfPara.docx')
-            assert.equal(fs.existsSync(result.ExtractedLogic), true);
-        })
-    })
-    it('generates files for MissingEndIfRun.docx', async function() {
-        assert.rejects( async () => {
-            const result = await generateFilesFor('MissingEndIfRun.docx')
-            assert.equal(fs.existsSync(result.ExtractedLogic), true);
-        })
-    })
-    it('generates files for MissingIfRun.docx', async function() {
-        assert.rejects( async () => {
-            const result = await generateFilesFor('MissingIfRun.docx')
-            assert.equal(fs.existsSync(result.ExtractedLogic), true);
-        })
-    })
-    it('generates files for MissingIfPara.docx', async function() {
-        assert.rejects( async () => {
-            const result = await generateFilesFor('MissingIfPara.docx')
-            assert.equal(fs.existsSync(result.ExtractedLogic), true);
-        })
     })
     it('generates files for NonBlockIf.docx', async function() {
         const result = await generateFilesFor('NonBlockIf.docx')
@@ -66,5 +58,37 @@ describe('Producing files necessary for .NET Unit Tests to run', function() {
     it('generates files for ifpoa.docx', async function() {
         const result = await generateFilesFor('ifpoa.docx')
         assert.equal(fs.existsSync(result.ExtractedLogic), true);
+    })
+
+    // expected rejections...
+    it('throws error for MissingEndIfPara.docx', async function() {
+        assert.rejects( async () => {
+            const result = await generateFilesFor('MissingEndIfPara.docx')
+            assert.equal(fs.existsSync(result.ExtractedLogic), true);
+        }, new Error('EndIf not found'))
+    })
+    it('throws error for MissingEndIfRun.docx', async function() {
+        assert.rejects( async () => {
+            const result = await generateFilesFor('MissingEndIfRun.docx')
+            assert.equal(fs.existsSync(result.ExtractedLogic), true);
+        }, new Error('EndIf not found'))
+    })
+    it('throws error for MissingIfRun.docx', async function() {
+        assert.rejects( async () => {
+            const result = await generateFilesFor('MissingIfRun.docx')
+            assert.equal(fs.existsSync(result.ExtractedLogic), true);
+        }, new Error('Unmatched EndIf'))
+    })
+    it('throws error for MissingIfPara.docx', async function() {
+        assert.rejects( async () => {
+            const result = await generateFilesFor('MissingIfPara.docx')
+            assert.equal(fs.existsSync(result.ExtractedLogic), true);
+        }, new Error('Unmatched EndIf'))
+    })
+    it('throws syntax error for crasher.docx', async function() {
+        assert.rejects(async () => {
+            const result = await generateFilesFor('crasher.docx')
+            //assert.equal(fs.existsSync(result.ExtractedLogic), true);
+        }, new SyntaxError('Syntax Error: \'"1, 2, and 3"\' is not a valid identifier:\nChildren|"1, 2, and 3"\n         ^^^^^^^^^^^^^'))
     })
 })

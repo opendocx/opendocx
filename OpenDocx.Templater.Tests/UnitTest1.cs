@@ -22,9 +22,9 @@ namespace OpenDocxTemplater.Tests
         [InlineData("Lists.docx")]
         [InlineData("team_report.docx")]
         [InlineData("abconditional.docx")]
-        [InlineData("crasher.docx")]
         [InlineData("redundant_ifs.docx")]
         [InlineData("syntax_crash.docx")]
+        [InlineData("acp.docx")]
         public void CompileTemplate(string name)
         {
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
@@ -60,12 +60,13 @@ namespace OpenDocxTemplater.Tests
         }
 
         [Theory]
-        [InlineData("MissingEndIfPara.docx")]
-        [InlineData("MissingEndIfRun.docx")]
-        [InlineData("MissingIfRun.docx")]
-        [InlineData("MissingIfPara.docx")]
+        //[InlineData("MissingEndIfPara.docx")]
+        //[InlineData("MissingEndIfRun.docx")]
+        //[InlineData("MissingIfRun.docx")]
+        //[InlineData("MissingIfPara.docx")]
         [InlineData("NonBlockIf.docx")]
         [InlineData("NonBlockEndIf.docx")]
+        //[InlineData("crasher.docx")]
         public void CompileErrors(string name)
         {
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
@@ -83,6 +84,54 @@ namespace OpenDocxTemplater.Tests
             var compileResult = templater.CompileTemplate(templateName, extractResult.TempTemplate, templateName + "obj.fields.json");
             Assert.True(compileResult.HasErrors);
             Assert.True(File.Exists(compileResult.DocxGenTemplate));
+        }
+
+        [Theory]
+        [InlineData("SmartTags.docx")] // this document has an invalid smartTag element (apparently inserted by 3rd party software)
+        /*[InlineData("BadSmartTags.docx")]*/
+        public void ValidateDocument(string name)
+        {
+            DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
+            FileInfo docx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+            var validator = new Validator();
+            var result = validator.ValidateDocument(docx.FullName);
+            // oddly, Word will read this file (SmartTags.docx) without complaint, but it's still (apparently) invalid?
+            // (check whether it is REALLY invalid, or whether we should patch ValidateDocument to accept it?)
+            Assert.True(result.HasErrors);
+        }
+
+        [Fact]
+        public void RemoveSmartTags()
+        {
+            string name = "SmartTags.docx"; // this document has an invalid smartTag element (apparently inserted by 3rd party software)
+            DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
+            FileInfo docx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
+            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, name));
+            string filePath = outputDocx.FullName;
+            string outPath = Path.Combine(destDir.FullName, "SmartTags-Removed.docx");
+            docx.CopyTo(filePath, true);
+            WmlDocument doc = new WmlDocument(filePath);
+            byte[] byteArray = doc.DocumentByteArray;
+            WmlDocument transformedDoc = null;
+            using (MemoryStream mem = new MemoryStream())
+            {
+                mem.Write(byteArray, 0, byteArray.Length);
+                using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(mem, true))
+                {
+                    var settings = new SimplifyMarkupSettings { RemoveSmartTags = true };// we try to remove smart tags, but the (apparently) invalid one is not removed correctly
+                    MarkupSimplifier.SimplifyMarkup(wordDoc, settings);
+                }
+                transformedDoc = new WmlDocument(outPath, mem.ToArray());
+                Assert.False(transformedDoc.MainDocumentPart.Descendants(W.smartTag).Any());
+                transformedDoc.Save();
+            }
+            // transformedDoc still has leftover bits of the invalid smart tag, and should therefore be invalid
+             // (consider whether it would be appropriate to patch SimplifyMarkup to correctly remove this apparently invalid smart tag?)
+            var validator = new Validator();
+            var result = validator.ValidateDocument(outPath);
+            // MS Word also complains about the validity of this document
+            Assert.True(result.HasErrors);
         }
 
         //[Fact]
