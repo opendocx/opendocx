@@ -59,6 +59,10 @@ describe('Producing files necessary for .NET Unit Tests to run', function() {
         const result = await generateFilesFor('ifpoa.docx')
         assert.equal(fs.existsSync(result.ExtractedLogic), true);
     })
+    it('generates files for loandoc_example.docx', async function() {
+        const result = await generateFilesFor('loandoc_example.docx')
+        assert.equal(fs.existsSync(result.ExtractedLogic), true);
+    })
 
     // expected rejections...
     it('throws error for MissingEndIfPara.docx', async function() {

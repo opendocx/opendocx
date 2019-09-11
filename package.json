@@ -1,6 +1,6 @@
 {
   "name": "opendocx-node",
-  "version": "0.9.0-beta.1",
+  "version": "0.9.1-beta.0",
   "description": "OpenDocx document assembly for Node.js",
   "main": "src/index.js",
   "scripts": {

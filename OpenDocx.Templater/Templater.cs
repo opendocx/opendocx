@@ -383,7 +383,7 @@ namespace OpenDocx
                     foreach (var e in contentBetween)
                     {
                         metadataParent.Add(e);
-                        if (((e.Name == OD.ElseIf) || (e.Name == OD.Else)) && ((int)e.Attribute(OD.Depth) == depth))
+                        if (metadata.Name == OD.If && (e.Name == OD.ElseIf || e.Name == OD.Else) && ((int)e.Attribute(OD.Depth) == depth))
                         {
                             e.RemoveNodes(); // LS: are there any?? why would there be?
                             metadataParent = e;
