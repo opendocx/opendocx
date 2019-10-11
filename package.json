@@ -1,6 +1,6 @@
 {
   "name": "opendocx-node",
-  "version": "0.9.2-beta.0",
+  "version": "0.9.3-beta.0",
   "description": "OpenDocx document assembly for Node.js",
   "main": "src/index.js",
   "scripts": {
@@ -36,7 +36,7 @@
     "path": "^0.12.7",
     "semver": "^6.1.1",
     "util": "^0.11.1",
-    "yatte": "^0.9.9-beta.7"
+    "yatte": "^1.0.0-beta.1"
   },
   "devDependencies": {
     "date-fns": "^1.30.1",

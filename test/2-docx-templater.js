@@ -69,30 +69,36 @@ describe('Producing files necessary for .NET Unit Tests to run', function() {
         assert.rejects( async () => {
             const result = await generateFilesFor('MissingEndIfPara.docx')
             assert.equal(fs.existsSync(result.ExtractedLogic), true);
-        }, new Error('EndIf not found'))
+        }, new Error('No EndIf found to match field 1\'s If'))
     })
     it('throws error for MissingEndIfRun.docx', async function() {
         assert.rejects( async () => {
             const result = await generateFilesFor('MissingEndIfRun.docx')
             assert.equal(fs.existsSync(result.ExtractedLogic), true);
-        }, new Error('EndIf not found'))
+        }, new Error('No EndIf found to match field 1\'s If'))
     })
     it('throws error for MissingIfRun.docx', async function() {
         assert.rejects( async () => {
             const result = await generateFilesFor('MissingIfRun.docx')
             assert.equal(fs.existsSync(result.ExtractedLogic), true);
-        }, new Error('Unmatched EndIf'))
+        }, new Error('Encountered an EndIf (field 2) without a matching If'))
     })
     it('throws error for MissingIfPara.docx', async function() {
         assert.rejects( async () => {
             const result = await generateFilesFor('MissingIfPara.docx')
             assert.equal(fs.existsSync(result.ExtractedLogic), true);
-        }, new Error('Unmatched EndIf'))
+        }, new Error('Encountered an EndIf (field 2) without a matching If'))
     })
     it('throws syntax error for crasher.docx', async function() {
         assert.rejects(async () => {
             const result = await generateFilesFor('crasher.docx')
             //assert.equal(fs.existsSync(result.ExtractedLogic), true);
         }, new SyntaxError('Syntax Error: \'"1, 2, and 3"\' is not a valid identifier:\nChildren|"1, 2, and 3"\n         ^^^^^^^^^^^^^'))
+    })
+    it('throw syntax error for Married RLT Plain.docx', async function() {
+        assert.rejects(async () => {
+            const result = await generateFilesFor('Married RLT Plain.docx')
+            //assert.equal(fs.existsSync(result.ExtractedLogic), true);
+        }, new Error('Encountered an Else (field 223) without a matching If'))
     })
 })

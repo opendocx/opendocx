@@ -41,17 +41,7 @@ namespace OpenDocx
 
             using (StreamWriter sw = File.CreateText(outputFile))
             {
-                sw.Write('[');
-                bool first = true;
-                foreach (var field in fieldAccumulator)
-                {
-                    if (first)
-                        first = false;
-                    else
-                        sw.Write(',');
-                    sw.Write(field.JsonSerialize());
-                }
-                sw.Write(']');
+                fieldAccumulator.JsonSerialize(sw);
                 sw.Close();
             }
 
@@ -109,7 +99,7 @@ namespace OpenDocx
                             .CleanUpInvalidCharacters();
                         if (FieldRecognizer.IsField(ccContents, out ccContents))
                         {
-                            var fieldId = fieldAccumulator.Count.ToString();
+                            //var isBlockLevel = element.Element(W.sdtContent).Elements(W.p).FirstOrDefault() != null;
                             var newCC = new XElement(element.Name, element.Attributes(), element.Nodes());
                             var props = newCC.Elements(W.sdtPr).FirstOrDefault();
                             if (props == null)
@@ -123,8 +113,8 @@ namespace OpenDocx
                                 tagElem = new XElement(W.tag);
                                 props.Add(tagElem);
                             }
+                            var fieldId = fieldAccumulator.AddField(ccContents);
                             tagElem.SetAttributeValue(W.val, fieldId);
-                            fieldAccumulator.Add(new FieldInfo(ccContents, fieldId));
                             return newCC;
                         }
                         return new XElement(element.Name,
@@ -137,6 +127,7 @@ namespace OpenDocx
                 }
                 if (element.Name == W.p)
                 {
+                    fieldAccumulator.BeginBlock();
                     var paraContents = element
                         .DescendantsTrimmed(W.txbxContent)
                         .Where(e => e.Name == W.t)
@@ -154,8 +145,8 @@ namespace OpenDocx
                             .Trim();
                         if (FieldRecognizer.IsField(content, out content))
                         {
-                            var fieldId = fieldAccumulator.Count.ToString();
-                            fieldAccumulator.Add(new FieldInfo(content, fieldId));
+                            var fieldId = fieldAccumulator.AddField(content);
+                            fieldAccumulator.EndBlock();
                             var ppr = element.Elements(W.pPr).FirstOrDefault();
                             var rpr = (ppr != null) ? ppr.Elements(W.rPr).FirstOrDefault() : null;
                             XElement r = new XElement(W.r, rpr,
@@ -211,9 +202,14 @@ namespace OpenDocx
                                 }
                             }
                             var coalescedParagraph = WordprocessingMLUtil.CoalesceAdjacentRunsWithIdenticalFormatting(newPara);
-                            return IdentifyAndTransformFields(coalescedParagraph, fieldAccumulator);
+                            var transformedContent = IdentifyAndTransformFields(coalescedParagraph, fieldAccumulator);
+                            fieldAccumulator.EndBlock();
+                            return transformedContent;
                         }
                     }
+                    var transformedParaContent = element.Nodes().Select(n => IdentifyAndTransformFields(n, fieldAccumulator)).ToArray();
+                    fieldAccumulator.EndBlock();
+                    return new XElement(element.Name, element.Attributes(), transformedParaContent);
                 }
                 if (element.Name == W.lastRenderedPageBreak)
                 {
