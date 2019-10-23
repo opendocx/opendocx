@@ -197,7 +197,12 @@ namespace OpenDocx
                                     throw new InvalidOperationException("Internal error");
                                 else
                                 {
-                                    //elem.Add(runToReplace); // does this work? what does it do?
+                                    var rpr = runToReplace.Elements(W.rPr).FirstOrDefault();
+                                    if (rpr != null)
+                                    {
+                                        rpr.Remove();
+                                        elem.Elements(W.sdtContent).First().Elements(W.r).First().AddFirst(rpr);
+                                    }
                                     runToReplace.ReplaceWith(elem);
                                 }
                             }
