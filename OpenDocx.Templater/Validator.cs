@@ -55,11 +55,13 @@ namespace OpenDocx
             return new ValidateResult(hasErrors, errorList);
         }
 
+        #pragma warning disable CS1998
         public async Task<object> ValidateDocumentAsync(dynamic input)
         {
             var documentFile = (string)input.documentFile;
             return ValidateDocument(documentFile);
         }
+        #pragma warning restore CS1998
 
         private static List<string> s_ExpectedErrors = new List<string>()
         {

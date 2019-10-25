@@ -13,11 +13,13 @@ namespace OpenDocx
 {
     public class FieldExtractor
     {
+        #pragma warning disable CS1998
         public async Task<object> ExtractFieldsAsync(dynamic input)
         {
             var templateFile = (string)input.templateFile;
             return ExtractFields(templateFile);
         }
+        #pragma warning restore CS1998
 
         public static FieldExtractResult ExtractFields(string templateFileName)
         {

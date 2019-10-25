@@ -59,11 +59,13 @@ namespace OpenDocx
         }
 
         // assembly is synchronous, but when calling from Node.js (via Edge) we may still need an async method
+        #pragma warning disable CS1998
         public async Task<object> AssembleDocumentAsync(dynamic input)
         {
             //await Task.Yield();
             return AssembleDocument(input);
         }
+        #pragma warning restore CS1998
 
     }
 }

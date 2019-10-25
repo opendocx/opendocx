@@ -35,6 +35,7 @@ namespace OpenDocx
             return TransformTemplate(originalTemplateFile, preProcessedTemplateFile, xm);
         }
 
+        #pragma warning disable CS1998
         public async Task<object> CompileTemplateAsync(dynamic input)
         {
             var templateFile = (string)input.templateFile;
@@ -42,6 +43,7 @@ namespace OpenDocx
             var fieldInfoFileName = (string)input.fieldInfoFile;
             return CompileTemplate(originalTemplate, templateFile, fieldInfoFileName);
         }
+        #pragma warning restore CS1998
 
         private static CompileResult TransformTemplate(string originalTemplateFile, string preProcessedTemplateFile, FieldTransformIndex xm)
         {
