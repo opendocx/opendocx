@@ -102,13 +102,13 @@ namespace OpenDocx
                         if (FieldRecognizer.IsField(ccContents, out ccContents))
                         {
                             //var isBlockLevel = element.Element(W.sdtContent).Elements(W.p).FirstOrDefault() != null;
-                            var newCC = new XElement(element.Name, element.Attributes(), element.Nodes());
-                            var props = newCC.Elements(W.sdtPr).FirstOrDefault();
+                            var newCC = new XElement(element.Name, element.Attributes());
+                            var props = element.Elements(W.sdtPr).FirstOrDefault();
                             if (props == null)
-                            {
                                 props = new XElement(W.sdtPr);
-                                newCC.Add(props);
-                            }
+                            else
+                                props.Remove();
+                            newCC.Add(props);
                             var tagElem = props.Elements(W.tag).FirstOrDefault();
                             if (tagElem == null)
                             {
@@ -117,6 +117,7 @@ namespace OpenDocx
                             }
                             var fieldId = fieldAccumulator.AddField(ccContents);
                             tagElem.SetAttributeValue(W.val, fieldId);
+                            newCC.Add(element.Nodes());
                             return newCC;
                         }
                         return new XElement(element.Name,

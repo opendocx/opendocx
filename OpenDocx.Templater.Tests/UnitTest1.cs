@@ -137,6 +137,7 @@ namespace OpenDocxTemplater.Tests
 
         [Theory]
         [InlineData("Married RLT Plain.docx")]
+        [InlineData("text_field_formatting.docx")]
         public void FieldExtractor(string name)
         {
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
