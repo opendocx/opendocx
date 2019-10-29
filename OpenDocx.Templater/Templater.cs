@@ -181,6 +181,7 @@ namespace OpenDocx
             public static readonly XName ElseIf = "ElseIf";
             public static readonly XName Else = "Else";
             public static readonly XName EndIf = "EndIf";
+            public static readonly XName ListPr = "ListPr";
 
             public static readonly XName Expr = "expr";
             public static readonly XName Depth = "depth";
@@ -363,8 +364,14 @@ namespace OpenDocx
                 {
                     var depth = (int)metadata.Attribute(OD.Depth);
                     XName matchingEndName = null;
+                    XElement runProps = null;
                     if (metadata.Name == OD.List)
+                    {
                         matchingEndName = OD.EndList;
+                        runProps = metadata.Descendants(W.r).FirstOrDefault()?.Elements(W.rPr).FirstOrDefault();
+                        if (runProps != null)
+                            runProps.Remove();
+                    }
                     else if (metadata.Name == OD.If)
                         matchingEndName = OD.EndIf;
                     if (matchingEndName == null)
@@ -375,19 +382,28 @@ namespace OpenDocx
                         metadata.ReplaceWith(CreateParaErrorMessage(metadata, string.Format("Error: The '{0}' does not have a matching '{1}'", metadata.Name.LocalName, matchingEndName.LocalName), te));
                         continue;
                     }
-                    metadata.RemoveNodes(); // LS: are there any?? why would there be?
+                    metadata.RemoveNodes(); // Gets rid of the formatted content of the "if" or "list" field itself
+                    // but remember formatting of list field for later insertion of punctuation
+                    if (runProps != null)
+                    {
+                        var props = runProps.Elements().ToList();
+                        foreach (var item in props)
+                            item.Remove(); // remove each node from the W.rPr element
+                        metadata.Add(new XElement(OD.ListPr, props));
+                    }
                     var contentBetween = metadata.ElementsAfterSelf().TakeWhile(after => after != matchingEnd).ToList();
                     foreach (var item in contentBetween)
-                        item.Remove();
+                        item.Remove(); // remove each node from its parent element
                     contentBetween = contentBetween.Where(n => n.Name != W.bookmarkStart && n.Name != W.bookmarkEnd).ToList(); // ignore bookmarks
-                    //metadata.Add(contentBetween); // instead of adding all, add one-at-a-time, looking for "else ifs" and "elses", and making them nested parents of the appropriate content
+                    // add each content item (one-at-a-time) as a child of the metadata element,
+                    // looking for "else ifs" and "elses", and making them nested parents of the appropriate content
                     var metadataParent = metadata;
                     foreach (var e in contentBetween)
                     {
                         metadataParent.Add(e);
                         if (metadata.Name == OD.If && (e.Name == OD.ElseIf || e.Name == OD.Else) && ((int)e.Attribute(OD.Depth) == depth))
                         {
-                            e.RemoveNodes(); // LS: are there any?? why would there be?
+                            e.RemoveNodes(); // Gets rid of the formatted content of the nested "elseif" or "else" field itself
                             metadataParent = e;
                             e.Attributes(OD.Depth).Remove();
                         }
@@ -528,10 +544,18 @@ namespace OpenDocx
             {
                 if (element.Name == OD.List)
                 {
+                    var listPr = element.Elements(OD.ListPr).FirstOrDefault();
+                    if (listPr != null)
+                        listPr.Remove();
                     XElement puncRun = new XElement(OD.Content,
                         element.Attribute(OD.Id),
                         new XAttribute(OD.Punc, true),
-                        new XElement(W.r, new XElement(W.t, "[_punc]")));
+                        new XElement(
+                            W.r,
+                            (listPr != null) ? new XElement(W.rPr, listPr.Elements()) : null,
+                            new XElement(W.t, "[_punc]")
+                        )
+                    );
                     XElement para = element.Descendants(W.p).LastOrDefault();
                     if (para != null) // block-level list
                     {
