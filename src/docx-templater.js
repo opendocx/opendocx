@@ -9,33 +9,33 @@ const edge = require('edge-js');
 const baseDll = path.join(baseNetAppPath, 'OpenDocx.Templater.dll');
 
 exports.extractFields = util.promisify(
-    edge.func({
-        assemblyFile: baseDll,
-        typeName: 'OpenDocx.FieldExtractor',
-        methodName: 'ExtractFieldsAsync'
-    })
+  edge.func({
+    assemblyFile: baseDll,
+    typeName: 'OpenDocx.FieldExtractor',
+    methodName: 'ExtractFieldsAsync'
+  })
 );
 
 exports.compileTemplate = util.promisify(
-    edge.func({
-        assemblyFile: baseDll,
-        typeName: 'OpenDocx.Templater',
-        methodName: 'CompileTemplateAsync'
-    })
+  edge.func({
+    assemblyFile: baseDll,
+    typeName: 'OpenDocx.Templater',
+    methodName: 'CompileTemplateAsync'
+  })
 );
 
 exports.assembleDocument = util.promisify(
-    edge.func({
-        assemblyFile: baseDll,
-        typeName: 'OpenDocx.Assembler',
-        methodName: 'AssembleDocumentAsync'
-    })
+  edge.func({
+    assemblyFile: baseDll,
+    typeName: 'OpenDocx.Assembler',
+    methodName: 'AssembleDocumentAsync'
+  })
 );
 
 exports.validateDocument = util.promisify(
-    edge.func({
-        assemblyFile: baseDll,
-        typeName: 'OpenDocx.Validator',
-        methodName: 'ValidateDocumentAsync'
-    })
+  edge.func({
+    assemblyFile: baseDll,
+    typeName: 'OpenDocx.Validator',
+    methodName: 'ValidateDocumentAsync'
+  })
 );
