@@ -1,6 +1,6 @@
 'use strict'
 
-const isDate = require('date-fns/is_date')
+const isDate = require('date-fns/isDate')
 const dateFormat = require('date-fns/format')
 
 class XmlDataBuilder {
@@ -100,7 +100,7 @@ class XmlDataBuilder {
       case 'string':
         return escapeXml(value)
       case 'date':
-        return dateFormat(value, 'YYYY-MM-DD')
+        return dateFormat(value, 'yyyy-MM-dd')
       case 'number':
         return value.toString()
       case 'boolean':
