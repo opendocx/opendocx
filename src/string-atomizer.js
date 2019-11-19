@@ -1,33 +1,34 @@
-'use strict';
+'use strict'
 
-let atomStore = {};
-let atomSeed = 0;
+class Atomizer {
+  constructor () {
+    this.atomSeed = 0
+    this.atomStore = {}
+  }
 
-module.exports = function(str) {
-  if (str==='###reset###') {
-    atomSeed = 0;
-    atomStore = {};
-    return;
+  get (str) {
+    if (str === null) {
+      throw new Error('Unexpected: cannot atomize a null string')
+    }
+    var result = this.atomStore[str]
+    if (typeof result === 'string') return result
+    // else
+    result = base52(this.atomSeed++)
+    this.atomStore[str] = result
+    return result
   }
-  if (str===null) {
-    throw "Unexpected: cannot atomize a null string"
-  }
-  var result = atomStore[str];
-  if (typeof result == 'string') return result;
-  // else
-  result = base52(atomSeed++);
-  atomStore[str] = result;
-  return result;
 }
 
-const alpha = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const alphaLen = alpha.length;
-const base52 = function (num) {
-  let result = '';
+module.exports = Atomizer
+
+const alpha = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+const alphaLen = alpha.length
+function base52 (num) {
+  let result = ''
   while (num > 0) {
-    let index = num % alphaLen;
-    result = alpha.charAt(index) + result;
-    num = (num - index) / alphaLen;
+    const index = num % alphaLen
+    result = alpha.charAt(index) + result
+    num = (num - index) / alphaLen
   }
-  return result || 'a';
+  return result || 'a'
 }
