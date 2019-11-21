@@ -1,3 +1,4 @@
+/* eslint semi: "off", linebreak-style: "off" */
 'use strict';
 
 const docxTemplater = require('./docx-templater');
@@ -5,7 +6,7 @@ const XmlAssembler = require('./docx-evaluator');
 const yatte = require('yatte');
 const fs = require('fs');
 const OD = yatte.FieldTypes;
-const atomize = require('./string-atomizer');
+const Atomizer = require('./string-atomizer');
 const version = require('./version');
 
 exports.compileDocx = async function(templatePath) {
@@ -21,8 +22,8 @@ exports.compileDocx = async function(templatePath) {
   let ast = yatte.Engine.parseContentArray(fieldList); // makes template ast; parses, normalizes & caches all expressions
   // create a map from field ID to nodes in the AST, and save it in a temp file
   let fieldDict = {};
-  atomize('###reset###');
-  buildFieldDictionary(ast, fieldDict); // this also atomizes expressions in fields
+  let atoms = new Atomizer();
+  buildFieldDictionary(ast, fieldDict, atoms); // this also atomizes expressions in fields
   const fieldDictPath = templatePath + "obj.fields.json";
   fs.writeFileSync(fieldDictPath, JSON.stringify(fieldDict));
   // now use the pre-processed template and the field map to create a DocxGen template
@@ -37,7 +38,7 @@ exports.compileDocx = async function(templatePath) {
   ttpl.ExtractedLogicTree = simplifiedAstPath;
   // use the simplified AST to create a JS function turns a OpenDocx data context into DocxGen XML matched to the template
   const outputJsPath = templatePath + ".js";
-  fs.writeFileSync(outputJsPath, createTemplateJsModule(rast, fieldDict));
+  fs.writeFileSync(outputJsPath, createTemplateJsModule(rast, atoms));
   ttpl.ExtractedLogic = outputJsPath;
   // will be investingating other ways of processing the AST dynamically, so maybe we just write out the .json rather than .js at all?  Might be more secure.
   //let dataEvaluator = compileData(rast) // returns function(contextObj) that returns xml string translated according to logic
@@ -107,43 +108,43 @@ exports.assembleDocx = async function (templatePath, outputFile, data, locals, o
   return result;
 }
 
-const buildFieldDictionary = function (astBody, fieldDict, parent = null) {
+const buildFieldDictionary = function (astBody, fieldDict, atoms, parent = null) {
   for (const obj of astBody) {
     if (Array.isArray(obj.contentArray)) {
-      buildFieldDictionary(obj.contentArray, fieldDict, obj);
+      buildFieldDictionary(obj.contentArray, fieldDict, atoms, obj);
     }
     if (typeof obj.id !== 'undefined') {
       // EndList fields are stored with the atomized expression of their matching List field, because this is used to make list punctuation work
-      fieldDict[obj.id] = {fieldType: obj.type, atomizedExpr: (obj.expr ? atomize(obj.expr) : (obj.type == OD.EndList ? atomize(parent.expr) : ''))};
+      fieldDict[obj.id] = {fieldType: obj.type, atomizedExpr: (obj.expr ? atoms.get(obj.expr) : (obj.type == OD.EndList ? atoms.get(parent.expr) : ''))};
     }
   }
 }
 
-const createTemplateJsModule = function(ast) {
+const createTemplateJsModule = function(ast, atoms) {
   const sb = ["'use strict';"];
   sb.push(`exports.version='${version}';`)
   sb.push('exports.evaluate=function(cx,cl,h)');
-  sb.push(serializeContextInDataJs(ast, '_odx', 'cx', 'cl', null));
+  sb.push(serializeContextInDataJs(ast, '_odx', 'cx', 'cl', atoms, null));
   return sb.join('\n');
 }
 
-const serializeContextInDataJs = function(contentArray, id, objIdent, locIdent, parentNode) {
+const serializeContextInDataJs = function(contentArray, id, objIdent, locIdent, atoms, parentNode) {
   return `{
 h.beginObject('${id}',${objIdent}${locIdent ? (','+locIdent):''});
-${serializeContentArrayAsDataJs(contentArray, parentNode)}
+${serializeContentArrayAsDataJs(contentArray, atoms, parentNode)}
 h.endObject()
 }`
 }
 
-const serializeAstNodeAsDataJs = function(astNode, parent) {
+const serializeAstNodeAsDataJs = function(astNode, atoms, parent) {
   let atom;
   if (astNode.expr) {
     if (astNode.expr === '_punc') { // special case: list punctuation: use a customized "atom" derived from the list expression
-      atom = atomize(parent.expr) + '1'
+      atom = atoms.get(parent.expr) + '1'
     } else if (astNode.type === OD.If || astNode.type === OD.ElseIf) { // special case: evaluating an expression for purposes of determining its truthiness rather than its actual value
-      atom = atomize(astNode.expr) + '2'
+      atom = atoms.get(astNode.expr) + '2'
     } else { // regular case: atom based on expression
-      atom = atomize(astNode.expr);
+      atom = atoms.get(astNode.expr);
     }
   } 
   switch (astNode.type) {
@@ -153,25 +154,25 @@ const serializeAstNodeAsDataJs = function(astNode, parent) {
     case OD.List:
       let a0 = atom + '0'; // special atom representing individual items in the list, rather than the entire list
       return `for(const ${a0} of h.beginList('${atom}', '${astNode.expr}'))
-${serializeContextInDataJs(astNode.contentArray, a0, a0, '', astNode)}
+${serializeContextInDataJs(astNode.contentArray, a0, a0, '', atoms, astNode)}
 h.endList();`
 
     case OD.If:
       return `if(h.beginCondition('${atom}','${astNode.expr}'))
 {
-${serializeContentArrayAsDataJs(astNode.contentArray, astNode)}
+${serializeContentArrayAsDataJs(astNode.contentArray, atoms, astNode)}
 }`
 
     case OD.ElseIf:
       return `} else {
 if(h.beginCondition('${atom}','${astNode.expr}'))
 {
-${serializeContentArrayAsDataJs(astNode.contentArray, astNode)}
+${serializeContentArrayAsDataJs(astNode.contentArray, atoms, astNode)}
 }`
 
     case OD.Else:
       return `} else {
-${serializeContentArrayAsDataJs(astNode.contentArray, astNode)}
+${serializeContentArrayAsDataJs(astNode.contentArray, atoms, astNode)}
 `
 
     default:
@@ -179,10 +180,10 @@ ${serializeContentArrayAsDataJs(astNode.contentArray, astNode)}
   }
 }
 
-const serializeContentArrayAsDataJs = function(contentArray, parent) {
+const serializeContentArrayAsDataJs = function(contentArray, atoms, parent) {
   let sb = [];
   for (const obj of contentArray) {
-    sb.push(serializeAstNodeAsDataJs(obj, parent));
+    sb.push(serializeAstNodeAsDataJs(obj, atoms, parent));
   }
   return sb.join('\n');
 }
