@@ -68,6 +68,8 @@ class XmlAssembler {
     }
     if (value === '') {
       this.xmlStack.set(ident, undefined);
+    } else if (typeof value === 'object') { // define should only be used to output simple scalar values into XML
+      this.xmlStack.set(ident, value.toString()) // probably bad input; convert to a string representation
     } else {
       this.xmlStack.set(ident, value);
     }
