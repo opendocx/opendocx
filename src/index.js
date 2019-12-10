@@ -69,7 +69,7 @@ exports.assembleDocx = async function (templatePath, outputFile, data, locals, o
   // but if not we'll compile it now
   let extractedLogic = templatePath + '.js'
   let docxGenTemplate = templatePath + 'gen.docx'
-  const dataAssembler = new XmlAssembler(data, locals)
+  const dataAssembler = new XmlAssembler(data)
   let needRegen = false
   if (!fs.existsSync(extractedLogic) || !fs.existsSync(docxGenTemplate)) {
     console.log('Warning: compiled template not found; generating. Pre-compile to maximize performance\n    '

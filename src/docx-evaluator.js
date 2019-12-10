@@ -6,14 +6,11 @@ const version = require('./version')
 const semver = require('semver')
 
 class XmlAssembler {
-  constructor (context, locals = null) {
+  constructor (scope) {
     this.missing = {}
     this.contextStack = null
-    if (context) {
-      this.contextStack = Scope.pushObject(context, this.contextStack)
-    }
-    if (locals) {
-      this.contextStack = Scope.pushObject(locals, this.contextStack)
+    if (scope) {
+      this.contextStack = Scope.pushObject(scope, this.contextStack)
     }
     this.xmlStack = new XmlDataBuilder()
   }
@@ -36,7 +33,7 @@ class XmlAssembler {
     return this.xmlStack.toString(joinstr)
   }
 
-  beginObject (ident, objContext, objLocals) {
+  beginObject (ident, objContext) {
     if (objContext !== this.contextStack && typeof objContext === 'number') {
       this.contextStack = Scope.pushListItem(objContext, this.contextStack)
       this.xmlStack.pushObject(ident)
