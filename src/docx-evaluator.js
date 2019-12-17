@@ -24,7 +24,8 @@ class XmlAssembler {
     } // else
     // invalidate loaded module with incorrect version!
     delete require.cache[require.resolve(templateJsFile)]
-    throw new Error(`Version mismatch: Expecting template JavaScript version ${thisVers}.x, but JS file is version ${loadedVers}`)
+    throw new Error(`Version mismatch: Expecting template JavaScript version ${thisVers}.x, but JS file is version ${
+      loadedVers}`)
   }
 
   assembleXml (templateJsFile, joinstr = '') {
@@ -34,9 +35,9 @@ class XmlAssembler {
   }
 
   beginObject (ident, objContext) {
-    if (objContext !== this.contextStack && typeof objContext === 'number') {
+    if (objContext !== this.contextStack && typeof objContext === 'number') { // top-level object
       this.contextStack = Scope.pushListItem(objContext, this.contextStack)
-      this.xmlStack.pushObject(ident)
+      this.xmlStack.pushObject(ident) // no need to push top-level object on XML stack
     }
   }
 
@@ -50,13 +51,14 @@ class XmlAssembler {
       throw new Error('internal error: Cannot define a member on an empty context stack')
     }
     const frame = this.contextStack
-    if (frame._objType !== Scope.OBJECT && frame._objType !== Scope.PRIMITIVE) {
-      throw new Error(`Internal error: cannot define a member on a ${frame._objType} context`)
+    if (frame.frameType === Scope.LIST) {
+      throw new Error('Internal error: cannot define a member on a list context')
     }
 
     const evaluator = Engine.compileExpr(expr) // these are cached so this should be fast
-    let value = frame._evaluate(evaluator) // we need to make sure this is memoized to avoid unnecessary re-evaluation
-    if (value && (typeof value === 'object') && (value.errors || value.missing)) { // value is a yatte EvaluationResult, probably because of nested template evaluation
+    let value = frame.evaluate(evaluator) // we need to make sure this is memoized to avoid unnecessary re-evaluation
+    if (value && (typeof value === 'object') && (value.errors || value.missing)) {
+      // value is a yatte EvaluationResult, probably because of nested template evaluation
       value = value.valueOf() // disregard everything but the actual evaluated value
     }
     if (value === null || typeof value === 'undefined') {
@@ -77,11 +79,11 @@ class XmlAssembler {
       throw new Error('internal error: Cannot define a condition on an empty context stack')
     }
     const frame = this.contextStack
-    if (frame._objType !== Scope.OBJECT) {
-      throw new Error(`Internal error: cannot define a condition on a ${frame._objType} context`)
+    if (frame.frameType !== Scope.OBJECT) {
+      throw new Error(`Internal error: cannot define a condition on a ${frame.frameType} context`)
     }
     const evaluator = Engine.compileExpr(expr) // these are cached so this should be fast
-    const value = frame._evaluate(evaluator) // we need to make sure this is memoized to avoid unnecessary re-evaluation
+    const value = frame.evaluate(evaluator) // this ought to be memoized to avoid unnecessary re-evaluation
     const bValue = Scope.isTruthy(value)
     this.xmlStack.set(ident, bValue)
     return bValue
@@ -90,9 +92,9 @@ class XmlAssembler {
   beginList (ident, expr) {
     const frame = this.contextStack
     const evaluator = Engine.compileExpr(expr) // these are cached so this should be fast
-    const iterable = frame._evaluate(evaluator) // we need to make sure this is memoized to avoid unnecessary re-evaluation
-    this.contextStack = Scope.pushList(iterable, this.contextStack, ident)
-    const indices = this.contextStack._indices
+    const iterable = frame.evaluate(evaluator) // this ought to be memoized to avoid unnecessary re-evaluation
+    this.contextStack = Scope.pushList(iterable || [], this.contextStack, ident)
+    const indices = this.contextStack.indices
     this.xmlStack.pushList(ident)
     return indices
   }

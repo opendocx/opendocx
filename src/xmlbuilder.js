@@ -6,15 +6,15 @@ const dateFormat = require('date-fns/format')
 class XmlDataBuilder {
   constructor () {
     this.data = {}
-    this.stack = [ this.data ]
+    this.stack = [this.data]
   }
 
   empty () {
-    return this.stack.length == 0
+    return this.stack.length === 0
   }
 
   pushObject (ident) {
-    let currentFrame = this.peek()
+    const currentFrame = this.peek()
     let pushedObj
     if (Array.isArray(currentFrame)) {
       pushedObj = currentFrame[currentFrame.index]
@@ -24,7 +24,7 @@ class XmlDataBuilder {
     } else {
       pushedObj = currentFrame[ident]
       if (!pushedObj) {
-          pushedObj = currentFrame[ident] = {}
+        pushedObj = currentFrame[ident] = {}
       }
     }
     this.push(pushedObj)
@@ -32,7 +32,7 @@ class XmlDataBuilder {
 
   popObject () {
     const poppedFrame = this.pop()
-    let currentFrame = this.peek()
+    const currentFrame = this.peek()
     if (Array.isArray(currentFrame)) {
       currentFrame.index = currentFrame.index + 1
     }
@@ -40,7 +40,7 @@ class XmlDataBuilder {
   }
 
   pushList (ident) {
-    let currentFrame = this.peek()
+    const currentFrame = this.peek()
     let pushedArray
     if (Array.isArray(currentFrame)) {
       throw new Error('Error when generating XML: Cannot push a list onto a list')
@@ -56,12 +56,14 @@ class XmlDataBuilder {
 
   popList () {
     const poppedFrame = this.pop()
-    if (!Array.isArray(poppedFrame)) throw new Error(`Error when generating XML: expected array frame, got ${typeof poppedFrame} instead`)
+    if (!Array.isArray(poppedFrame)) {
+      throw new Error(`Error when generating XML: expected array frame, got ${typeof poppedFrame} instead`)
+    }
     return poppedFrame
   }
 
   set (ident, value) {
-    let currentFrame = this.peek()
+    const currentFrame = this.peek()
     if (ident in currentFrame) {
       if ((currentFrame[ident] && currentFrame[ident].valueOf()) !== (value && value.valueOf())) {
         throw new Error('Error while creating XML data file: data mutation?')
@@ -84,18 +86,18 @@ class XmlDataBuilder {
   }
 
   toString (joinstr = '') {
-    return '<?xml version="1.0"?>' + this.serializeElement('_odx', this.data);
+    return '<?xml version="1.0"?>' + this.serializeElement('_odx', this.data)
   }
 
   serializeElement (ident, value) {
-    if (value === '' || value === null || value === undefined /*|| (Array.isArray(value) && value.length === 0)*/) {
+    if (value === '' || value === null || value === undefined /* || (Array.isArray(value) && value.length === 0) */) {
       return `<${ident}/>`
     } // else
     return `<${ident}>${this.serializeValue(value, ident)}</${ident}>`
   }
 
   serializeValue (value, ident) {
-    let valueType = Array.isArray(value.valueOf()) ? 'array' : isDate(value) ? 'date' : typeof value.valueOf()
+    const valueType = Array.isArray(value.valueOf()) ? 'array' : isDate(value) ? 'date' : typeof value.valueOf()
     switch (valueType) {
       case 'string':
         return escapeXml(value)
@@ -129,12 +131,12 @@ const escapeXml = function (str) {
     str = str.toString()
   }
   return str.replace(/[<>&'"]/g, function (c) {
-      switch (c) {
-          case '<': return '&lt;';
-          case '>': return '&gt;';
-          case '&': return '&amp;';
-          case '\'': return '&apos;';
-          case '"': return '&quot;';
-      }
-  });
+    switch (c) {
+      case '<': return '&lt;'
+      case '>': return '&gt;'
+      case '&': return '&amp;'
+      case '\'': return '&apos;'
+      case '"': return '&quot;'
+    }
+  })
 }
