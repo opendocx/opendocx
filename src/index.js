@@ -7,8 +7,9 @@ const fs = require('fs')
 const OD = yatte.FieldTypes
 const Atomizer = require('./string-atomizer')
 const version = require('./version')
+const loadTemplateModule = require('./load-template-module')
 
-exports.compileDocx = async function (templatePath) {
+async function compileDocx (templatePath) {
   // secret second parameter:
   const cleanUpArtifacts = (arguments.length > 1) ? arguments[1] : true
   // first pre-process the given template file, which
@@ -63,13 +64,14 @@ exports.compileDocx = async function (templatePath) {
   // }
   return ttpl
 }
+compileDocx.version = version
+exports.compileDocx = compileDocx
 
-exports.assembleDocx = async function (templatePath, outputFile, data, locals, optionalSaveXmlFile) {
+async function validateCompiledDocx (templatePath) {
   // templatePath should have been compiled (previously) so the expected files will be on disk
   // but if not we'll compile it now
-  let extractedLogic = templatePath + '.js'
-  let docxGenTemplate = templatePath + 'gen.docx'
-  const dataAssembler = new XmlAssembler(data)
+  const extractedLogic = templatePath + '.js'
+  const docxGenTemplate = templatePath + 'gen.docx'
   let needRegen = false
   if (!fs.existsSync(extractedLogic) || !fs.existsSync(docxGenTemplate)) {
     console.log('Warning: compiled template not found; generating. Pre-compile to maximize performance\n    '
@@ -77,21 +79,38 @@ exports.assembleDocx = async function (templatePath, outputFile, data, locals, o
     needRegen = true
   } else {
     try {
-      dataAssembler.loadTemplateModule(extractedLogic)
+      loadTemplateModule(extractedLogic)
     } catch (e) {
       console.log('Warning: ' + e.toString()
         + '\nPre-compile templates when upgrading to avoid performance penalty on first use\n    ' + templatePath)
       needRegen = true
     }
   }
+  let compileResult
   if (needRegen) {
-    const compileResult = await exports.compileDocx(templatePath)
-    extractedLogic = compileResult.ExtractedLogic
-    docxGenTemplate = compileResult.DocxGenTemplate
+    compileResult = await compileDocx(templatePath)
+  } else {
+    compileResult = {
+      Template: templatePath,
+      HasErrors: false,
+      ExtractedLogic: extractedLogic,
+      ExtractedLogicTree: templatePath + '.json',
+      DocxGenTemplate: docxGenTemplate,
+    }
   }
+  return compileResult
+}
+validateCompiledDocx.version = version
+exports.validateCompiledDocx = validateCompiledDocx
+
+async function assembleDocx (templatePath, outputFile, data, locals, optionalSaveXmlFile) {
+  // templatePath should have been compiled (previously) so the expected files will be on disk
+  // but if not we'll compile it now
+  const { ExtractedLogic, DocxGenTemplate } = await validateCompiledDocx(templatePath)
+  const dataAssembler = new XmlAssembler(data)
   const options = {
-    templateFile: docxGenTemplate,
-    xmlData: dataAssembler.assembleXml(extractedLogic),
+    templateFile: DocxGenTemplate,
+    xmlData: dataAssembler.assembleXml(ExtractedLogic),
     documentFile: outputFile,
   }
   if (optionalSaveXmlFile) {
@@ -107,6 +126,8 @@ exports.assembleDocx = async function (templatePath, outputFile, data, locals, o
   // }
   return result
 }
+assembleDocx.version = version
+exports.assembleDocx = assembleDocx
 
 const buildFieldDictionary = function (astBody, fieldDict, atoms, parent = null) {
   for (const obj of astBody) {

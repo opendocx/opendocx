@@ -2,8 +2,7 @@
 
 const { Scope, Engine } = require('yatte')
 const XmlDataBuilder = require('./xmlbuilder')
-const version = require('./version')
-const semver = require('semver')
+const loadTemplateModule = require('./load-template-module')
 
 class XmlAssembler {
   constructor (scope) {
@@ -15,21 +14,8 @@ class XmlAssembler {
     this.xmlStack = new XmlDataBuilder()
   }
 
-  loadTemplateModule (templateJsFile) {
-    const thisVers = semver.major(version) + '.' + semver.minor(version)
-    const extractedLogic = require(templateJsFile)
-    const loadedVers = extractedLogic.version
-    if (loadedVers && (semver.eq(version, loadedVers) || semver.satisfies(loadedVers, thisVers))) {
-      return extractedLogic
-    } // else
-    // invalidate loaded module with incorrect version!
-    delete require.cache[require.resolve(templateJsFile)]
-    throw new Error(`Version mismatch: Expecting template JavaScript version ${thisVers}.x, but JS file is version ${
-      loadedVers}`)
-  }
-
   assembleXml (templateJsFile, joinstr = '') {
-    const extractedLogic = this.loadTemplateModule(templateJsFile)
+    const extractedLogic = loadTemplateModule(templateJsFile)
     extractedLogic.evaluate(this.contextStack, null, this)
     return this.xmlStack.toString(joinstr)
   }
