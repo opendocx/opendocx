@@ -79,7 +79,7 @@ class XmlAssembler {
     const frame = this.contextStack
     const evaluator = Engine.compileExpr(expr) // these are cached so this should be fast
     const iterable = frame.evaluate(evaluator) // this ought to be memoized to avoid unnecessary re-evaluation
-    this.contextStack = Scope.pushList(iterable || [], this.contextStack, ident)
+    this.contextStack = Scope.pushList(iterable || [], this.contextStack)
     const indices = this.contextStack.indices
     this.xmlStack.pushList(ident)
     return indices
