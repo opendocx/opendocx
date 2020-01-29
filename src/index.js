@@ -106,24 +106,41 @@ exports.validateCompiledDocx = validateCompiledDocx
 async function assembleDocx (templatePath, outputFile, data, locals, optionalSaveXmlFile) {
   // templatePath should have been compiled (previously) so the expected files will be on disk
   // but if not we'll compile it now
+  let result
   const { ExtractedLogic, DocxGenTemplate } = await validateCompiledDocx(templatePath)
   const dataAssembler = new XmlAssembler(data)
-  const options = {
-    templateFile: DocxGenTemplate,
-    xmlData: dataAssembler.assembleXml(ExtractedLogic),
-    documentFile: outputFile,
+  const xmlData = dataAssembler.assembleXml(ExtractedLogic)
+  if (!dataAssembler.errors || dataAssembler.errors.length === 0) {
+    try {
+      if (optionalSaveXmlFile) {
+        fs.writeFileSync(optionalSaveXmlFile, xmlData)
+      }
+      result = await docxTemplater.assembleDocument({
+        templateFile: DocxGenTemplate,
+        xmlData,
+        documentFile: outputFile,
+      })
+      result.Missing = Object.keys(dataAssembler.missing)
+      result.Errors = []
+    } catch (e) {
+      result = {
+        Document: undefined,
+        Missing: Object.keys(dataAssembler.missing),
+        Errors: [e.message],
+        HasErrors: true,
+      }
+    }
+  } else { // errors were encountered while creating the XML -- don't asm
+    if (optionalSaveXmlFile) {
+      fs.writeFileSync(optionalSaveXmlFile, dataAssembler.errors.join('\n'))
+    }
+    result = {
+      Document: undefined,
+      Missing: Object.keys(dataAssembler.missing),
+      Errors: dataAssembler.errors,
+      HasErrors: true,
+    }
   }
-  if (optionalSaveXmlFile) {
-    fs.writeFileSync(optionalSaveXmlFile, options.xmlData)
-  }
-  const result = await docxTemplater.assembleDocument(options)
-  result.Missing = Object.keys(dataAssembler.missing)
-  // result looks like:
-  // {
-  //      HasErrors: false,
-  //      Document: "c:\path\to\document.docx",
-  //      Missing: ["expr1", "expr2", ...]
-  // }
   return result
 }
 assembleDocx.version = version

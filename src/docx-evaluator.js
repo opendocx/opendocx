@@ -7,6 +7,7 @@ const loadTemplateModule = require('./load-template-module')
 class XmlAssembler {
   constructor (scope) {
     this.missing = {}
+    this.errors = []
     this.contextStack = null
     if (scope) {
       this.contextStack = Scope.pushObject(scope, this.contextStack)
@@ -15,9 +16,13 @@ class XmlAssembler {
   }
 
   assembleXml (templateJsFile, joinstr = '') {
-    const extractedLogic = loadTemplateModule(templateJsFile)
-    extractedLogic.evaluate(this.contextStack, null, this)
-    return this.xmlStack.toString(joinstr)
+    try {
+      const extractedLogic = loadTemplateModule(templateJsFile)
+      extractedLogic.evaluate(this.contextStack, null, this)
+      return this.xmlStack.toString(joinstr)
+    } catch (e) {
+      this.errors.push(e.message)
+    }
   }
 
   beginObject (ident, objContext) {
@@ -45,7 +50,13 @@ class XmlAssembler {
     let value = frame.evaluate(evaluator) // we need to make sure this is memoized to avoid unnecessary re-evaluation
     if (value && (typeof value === 'object') && (value.errors || value.missing)) {
       // value is a yatte EvaluationResult, probably because of nested template evaluation
-      value = value.valueOf() // disregard everything but the actual evaluated value
+      if (value.missing && value.missing.length > 0) {
+        value.missing.forEach((expr) => { this.missing[expr] = true })
+      }
+      if (value.errors && value.errors.length > 0) {
+        value.errors.forEach((errmsg) => { this.errors.push(errmsg) })
+      }
+      value = value.valueOf() // get the actual evaluated value
     }
     if (value === null || typeof value === 'undefined') {
       this.missing[expr] = true
@@ -65,7 +76,7 @@ class XmlAssembler {
       throw new Error('internal error: Cannot define a condition on an empty context stack')
     }
     const frame = this.contextStack
-    if (frame.frameType !== Scope.OBJECT) {
+    if (frame.frameType !== Scope.OBJECT && frame.frameType !== Scope.PRIMITIVE) {
       throw new Error(`Internal error: cannot define a condition on a ${frame.frameType} context`)
     }
     const evaluator = Engine.compileExpr(expr) // these are cached so this should be fast
