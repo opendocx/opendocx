@@ -31,6 +31,7 @@ async function compileDocx (templatePath) {
   options.originalTemplateFile = templatePath
   options.fieldInfoFile = fieldDictPath
   const ttpl = await docxTemplater.compileTemplate(options)
+  ttpl.Template = templatePath
   // simplify the logic of the AST and save it for potential future use
   const simplifiedAstPath = templatePath + '.json'
   const rast = yatte.Engine.buildLogicTree(ast) // prunes logically insignificant nodes from ast
@@ -56,11 +57,12 @@ async function compileDocx (templatePath) {
   }
   // result looks like:
   // {
-  //      HasErrors: false,
-  //      Errors: [], // if there are errors, this is an array of strings
+  //      Template: "c:\path\to\template.docx",
   //      ExtractedLogic: "c:\path\to\template.docx.js",
   //      ExtractedLogicTree: "c:\path\to\template.docx.json",
   //      DocxGenTemplate: "c:\path\to\template.docxgen.docx",
+  //      HasErrors: false,
+  //      Errors: [], // if there are errors, this is an array of strings
   // }
   return ttpl
 }
