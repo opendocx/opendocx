@@ -38,28 +38,31 @@ namespace OpenDocx
         #pragma warning disable CS1998
         public async Task<object> CompileTemplateAsync(dynamic input)
         {
-            var templateFile = (string)input.templateFile;
-            var originalTemplate = (string)input.originalTemplateFile;
-            var fieldInfoFileName = (string)input.fieldInfoFile;
-            return CompileTemplate(originalTemplate, templateFile, fieldInfoFileName);
+            var preProcessedTemplateFile = (string)input.templateFile;
+            var originalTemplateFile = (string)input.originalTemplateFile;
+            var parsedFieldInfoFile = (string)input.fieldInfoFile;
+            return CompileTemplate(originalTemplateFile, preProcessedTemplateFile, parsedFieldInfoFile);
         }
         #pragma warning restore CS1998
 
         private static CompileResult TransformTemplate(string originalTemplateFile, string preProcessedTemplateFile, FieldTransformIndex xm)
         {
             string newDocxFilename = originalTemplateFile + "gen.docx";
-            WmlDocument templateDoc = new WmlDocument(preProcessedTemplateFile); // just reads the template's bytes into memory (that's all), read-only
-            byte[] byteArray = templateDoc.DocumentByteArray;
+            byte[] byteArray = File.ReadAllBytes(preProcessedTemplateFile);
             WmlDocument transformedTemplate = null;
             TemplateErrorList templateErrors;
-            using (MemoryStream mem = new MemoryStream())
+            using (MemoryStream memStream = new MemoryStream())
             {
-                mem.Write(byteArray, 0, byteArray.Length); // copy template file (binary) into memory -- I guess so the template/file handle isn't held/locked?
-                using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(mem, true)) // read & parse that byte array into OXML document (also in memory)
+                memStream.Write(byteArray, 0, byteArray.Length); // copy the bytes into an expandable MemoryStream
+                using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(memStream, true)) // read & parse that memory stream into an editable OXML document (also in memory)
                 {
                     templateErrors = PrepareTemplate(wordDoc, xm);
                 }
-                transformedTemplate = new WmlDocument(newDocxFilename, mem.ToArray());
+                transformedTemplate = new WmlDocument(newDocxFilename, memStream.ToArray());
+            }
+            // delete output file if it already exists (Save() below is supposed to always overwrite, but I just want to be sure)
+            if (File.Exists(newDocxFilename)) {
+                File.Delete(newDocxFilename);
             }
             // save the output (even in the case of error, since error messages are in the file)
             transformedTemplate.Save();

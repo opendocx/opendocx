@@ -8,6 +8,8 @@ using System.Linq;
 using System.Xml.Linq;
 using OpenXmlPowerTools;
 using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
+using DocumentFormat.OpenXml.CustomProperties;
 
 namespace OpenDocx
 {
@@ -55,9 +57,38 @@ namespace OpenDocx
             if (RevisionAccepter.HasTrackedRevisions(wordDoc))
                 throw new FieldParseException("Invalid template - contains tracked revisions");
 
+            // extract fields from each part of the document
             foreach (var part in wordDoc.ContentParts())
             {
                 ExtractFieldsFromPart(part, fieldAccumulator);
+
+                // remove document variables and custom properties
+                // (in case they have any sensitive information that should not carry over to assembled documents!)
+                MainDocumentPart main = part as MainDocumentPart;
+                if (main != null)
+                {
+                    var docVariables = main.DocumentSettingsPart.Settings.Descendants<DocumentVariables>();
+                    foreach (DocumentVariables docVars in docVariables.ToList())
+                    {
+                        foreach (DocumentVariable docVar in docVars.ToList())
+                        {
+                            docVar.Remove();
+                            //docVar.Name = "Id";
+                            //docVar.Val.Value = "123";
+                        }
+                    }
+                }
+            }
+            // remove custom properties if there are any (custom properties are the new/non-legacy version of document variables)
+            var custom = wordDoc.CustomFilePropertiesPart;
+            if (custom != null)
+            {
+                foreach (CustomDocumentProperty prop in custom.Properties.ToList())
+                {
+                    prop.Remove();
+                    // string propName = prop.Name;
+                    // string value = prop.VTLPWSTR.InnerText;
+                }
             }
         }
 

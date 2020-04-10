@@ -3,6 +3,7 @@ const assert = require('assert');
 const fs = require('fs');
 const XmlAssembler = require('../src/docx-evaluator');
 const testUtil = require('./test-utils');
+const Scope = require('yatte').Scope
 
 describe('Generating XML data for DOCX templates (white box)', function() {
     it('auto-generated js function should execute with an empty context', async function() {
@@ -190,7 +191,8 @@ describe('Generating XML data for DOCX templates (white box)', function() {
         let asmResult = openDocx.assembleDocx(templatePath, templatePath + '-assembled1.docx', data)
         assert(!asmResult.HasErrors)
         // now evaluate again with data in locals, and something else in scope, and make sure it still works
-        str = new XmlAssembler({global:'stuff'}, data).assembleXml(jsFile);
+        let otherData = Scope.pushObject(data, Scope.pushObject({global:'stuff'}))
+        str = new XmlAssembler(otherData).assembleXml(jsFile);
         assert.equal(str, expectedXml);
         fs.writeFileSync(templatePath + '.asmdata2.xml', str);
         asmResult = openDocx.assembleDocx(templatePath, templatePath + '-assembled2.docx', data)
