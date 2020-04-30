@@ -25,7 +25,7 @@ async function compileDocx (templatePath) {
   const atoms = new Atomizer()
   buildFieldDictionary(ast, fieldDict, atoms) // this also atomizes expressions in fields
   const fieldDictPath = templatePath + 'obj.fields.json'
-  fs.writeFileSync(fieldDictPath, JSON.stringify(fieldDict))
+  fs.writeFileSync(fieldDictPath, JSON.stringify(fieldDict)) // JSON Dictionary <string fieldNum, object atomizedExpr>
   // now use the pre-processed template and the field map to create a DocxGen template
   options.templateFile = result.TempTemplate
   options.originalTemplateFile = templatePath

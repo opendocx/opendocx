@@ -33,6 +33,7 @@ const redundant_if_logic_tree = [
 {
     "type": "If",
     "expr": "x",
+    "id": "1",
     "exprAst": {
         "type": "Identifier",
         "name": "x",
@@ -41,6 +42,7 @@ const redundant_if_logic_tree = [
     "contentArray": [{
             "type": "Content",
             "expr": "adjective",
+            "id": "2",
             "exprAst": {
                 "type": "Identifier",
                 "name": "adjective",
@@ -48,12 +50,14 @@ const redundant_if_logic_tree = [
             }
         }, {
             "type": "Else",
+            "id": "3",
             "contentArray": []
         }
     ]
 }, {
     "type": "Content",
     "expr": "name",
+    "id": "5",
     "exprAst": {
         "type": "Identifier",
         "name": "name",
@@ -62,6 +66,7 @@ const redundant_if_logic_tree = [
 }, {
     "type": "If",
     "expr": "x",
+    "id": "6",
     "exprAst": {
         "type": "Identifier",
         "name": "x",
@@ -69,6 +74,7 @@ const redundant_if_logic_tree = [
     },
     "contentArray": [{
             "type": "Else",
+            "id": "7",
             "contentArray": []
         }
     ]
@@ -90,6 +96,7 @@ const TestNestLogicTree = [
     {
         type: "If",
         expr: "x",
+        id: '1',
         exprAst: {
             type: "Identifier",
             name: "x",
@@ -99,6 +106,7 @@ const TestNestLogicTree = [
             {
                 type: "List",
                 expr: "[]",
+                id: '2',
                 exprAst: {
                     type: "ArrayExpression",
                     elements: [],
@@ -109,6 +117,7 @@ const TestNestLogicTree = [
                     {
                         type: "Content",
                         expr: "test",
+                        id: '3',
                         exprAst: {
                             type: "Identifier",
                             name: "test",
@@ -129,6 +138,7 @@ const TestNestLogicTree = [
             {
                 type: "ElseIf",
                 expr: "y",
+                id: '5',
                 exprAst: {
                     type: "Identifier",
                     name: "y",
@@ -138,6 +148,7 @@ const TestNestLogicTree = [
                     {
                         type: "Content",
                         expr: "A",
+                        id: '6',
                         exprAst: {
                             type: "Identifier",
                             name: "A",
@@ -147,6 +158,7 @@ const TestNestLogicTree = [
                     {
                         type: "List",
                         expr: "outer",
+                        id: '7',
                         exprAst: {
                             type: "Identifier",
                             name: "outer",
@@ -157,6 +169,7 @@ const TestNestLogicTree = [
                             {
                                 type: "Content",
                                 expr: "z?B:B2",
+                                id: '8',
                                 exprAst: {
                                     type: "ConditionalExpression",
                                     test: {
@@ -181,6 +194,7 @@ const TestNestLogicTree = [
                             {
                                 type: "List",
                                 expr: "inner",
+                                id: '9',
                                 exprAst: {
                                     type: "Identifier",
                                     name: "inner",
@@ -191,6 +205,7 @@ const TestNestLogicTree = [
                                     {
                                         type: "Content",
                                         expr: "C",
+                                        id: '10',
                                         exprAst: {
                                             type: "Identifier",
                                             name: "C",
@@ -211,6 +226,7 @@ const TestNestLogicTree = [
                             {
                                 type: "Content",
                                 expr: "D",
+                                id: '12',
                                 exprAst: {
                                     type: "Identifier",
                                     name: "D",
@@ -231,6 +247,7 @@ const TestNestLogicTree = [
                     {
                         type: "Content",
                         expr: "E",
+                        id: '14',
                         exprAst: {
                             type: "Identifier",
                             name: "E",
@@ -239,10 +256,12 @@ const TestNestLogicTree = [
                     },
                     {
                         type: "Else",
+                        id: '15',
                         contentArray: [
                             {
                                 type: "Content",
                                 expr: "F",
+                                id: '16',
                                 exprAst: {
                                     type: "Identifier",
                                     name: "F",
@@ -252,6 +271,7 @@ const TestNestLogicTree = [
                             {
                                 type: "List",
                                 expr: "another",
+                                id: '17',
                                 exprAst: {
                                     type: "Identifier",
                                     name: "another",
@@ -262,6 +282,7 @@ const TestNestLogicTree = [
                                     {
                                         type: "Content",
                                         expr: "G",
+                                        id: '18',
                                         exprAst: {
                                             type: "Identifier",
                                             name: "G",
@@ -282,6 +303,7 @@ const TestNestLogicTree = [
                             {
                                 type: "Content",
                                 expr: "H",
+                                id: '20',
                                 exprAst: {
                                     type: "Identifier",
                                     name: "H",
