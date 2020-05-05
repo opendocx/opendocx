@@ -97,7 +97,11 @@ describe('Producing files necessary for .NET Unit Tests to run', function() {
         assert.rejects(async () => {
             const result = await generateFilesFor('crasher.docx')
             //assert.equal(fs.existsSync(result.ExtractedLogic), true);
-        }, new SyntaxError('Syntax Error: \'"1, 2, and 3"\' is not a valid identifier:\nChildren|"1, 2, and 3"\n         ^^^^^^^^^^^^^'))
+        }, new SyntaxError(
+            'Syntax Error: \'"1, 2, and 3"\' is not a valid identifier:\n' +
+            'Children|"1, 2, and 3"\n' +
+            '         ^^^^^^^^^^^^^' +
+            ' [in field 18]'))
     })
     it('throw syntax error for Married RLT Plain.docx', async function() {
         assert.rejects(async () => {
