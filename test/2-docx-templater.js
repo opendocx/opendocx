@@ -39,14 +39,6 @@ describe('Producing files necessary for .NET Unit Tests to run', function() {
         const result = await generateFilesFor('syntax_crash.docx')
         assert.equal(fs.existsSync(result.ExtractedLogic), true);
     })
-    it('generates files for NonBlockIf.docx', async function() {
-        const result = await generateFilesFor('NonBlockIf.docx')
-        assert.equal(fs.existsSync(result.ExtractedLogic), true);
-    })
-    it('generates files for NonBlockEndIf.docx', async function() {
-        const result = await generateFilesFor('NonBlockEndIf.docx')
-        assert.equal(fs.existsSync(result.ExtractedLogic), true);
-    })
     it('generates files for Syntax.docx', async function() {
         const result = await generateFilesFor('Syntax.docx')
         assert.equal(fs.existsSync(result.ExtractedLogic), true);
@@ -73,25 +65,43 @@ describe('Producing files necessary for .NET Unit Tests to run', function() {
         assert.rejects( async () => {
             const result = await generateFilesFor('MissingEndIfPara.docx')
             assert.equal(fs.existsSync(result.ExtractedLogic), true);
-        }, new Error('No EndIf found to match field 1\'s If'))
+        }, new Error('Field 1\'s If has no matching EndIf'))
     })
     it('throws error for MissingEndIfRun.docx', async function() {
         assert.rejects( async () => {
             const result = await generateFilesFor('MissingEndIfRun.docx')
             assert.equal(fs.existsSync(result.ExtractedLogic), true);
-        }, new Error('No EndIf found to match field 1\'s If'))
+        }, new Error('Field 1\'s If has no matching EndIf'))
     })
     it('throws error for MissingIfRun.docx', async function() {
         assert.rejects( async () => {
             const result = await generateFilesFor('MissingIfRun.docx')
             assert.equal(fs.existsSync(result.ExtractedLogic), true);
-        }, new Error('Encountered an EndIf (field 2) without a matching If'))
+        }, new Error('Field 2\'s EndIf has no matching If'))
     })
     it('throws error for MissingIfPara.docx', async function() {
         assert.rejects( async () => {
             const result = await generateFilesFor('MissingIfPara.docx')
             assert.equal(fs.existsSync(result.ExtractedLogic), true);
-        }, new Error('Encountered an EndIf (field 2) without a matching If'))
+        }, new Error('Field 2\'s EndIf has no matching If'))
+    })
+    it('throws error for NonBlockIf.docx', async function() {
+        assert.rejects( async () => {
+            const result = await generateFilesFor('NonBlockIf.docx')
+            assert.equal(fs.existsSync(result.ExtractedLogic), true);
+        }, new Error('Field 1\'s If has no matching EndIf'))
+    })
+    it('throws error for NonBlockEndIf.docx', async function() {
+        assert.rejects( async () => {
+            const result = await generateFilesFor('NonBlockEndIf.docx')
+            assert.equal(fs.existsSync(result.ExtractedLogic), true);
+        }, new Error('Field 3\'s EndIf has no matching If'))
+    })
+    it('throws error for kMANT.docx', async function() {
+        assert.rejects( async () => {
+            const result = await generateFilesFor('kMANT.docx')
+            assert.equal(fs.existsSync(result.ExtractedLogic), true);
+        }, new Error('Field 3\'s EndIf has no matching If'))
     })
     it('throws syntax error for crasher.docx', async function() {
         assert.rejects(async () => {
@@ -107,6 +117,6 @@ describe('Producing files necessary for .NET Unit Tests to run', function() {
         assert.rejects(async () => {
             const result = await generateFilesFor('Married RLT Plain.docx')
             //assert.equal(fs.existsSync(result.ExtractedLogic), true);
-        }, new Error('Encountered an Else (field 223) without a matching If'))
+        }, new Error('Field 223\'s Else has no matching If'))
     })
 })

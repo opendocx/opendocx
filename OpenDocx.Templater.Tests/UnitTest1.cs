@@ -68,6 +68,7 @@ namespace OpenDocxTemplater.Tests
         //[InlineData("MissingIfPara.docx")]
         [InlineData("NonBlockIf.docx")]
         [InlineData("NonBlockEndIf.docx")]
+        [InlineData("kMANT.docx")]
         //[InlineData("crasher.docx")]
         public void CompileErrors(string name)
         {
@@ -139,6 +140,7 @@ namespace OpenDocxTemplater.Tests
         [Theory]
         [InlineData("Married RLT Plain.docx")]
         [InlineData("text_field_formatting.docx")]
+        [InlineData("kMANT.docx")]
         public void FieldExtractor(string name)
         {
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
@@ -150,6 +152,26 @@ namespace OpenDocxTemplater.Tests
             var extractResult = OpenDocx.FieldExtractor.ExtractFields(templateName);
             Assert.True(File.Exists(extractResult.ExtractedFields));
             Assert.True(File.Exists(extractResult.TempTemplate));
+        }
+
+        [Fact]
+        public void XmlError()
+        {
+            string name = "xmlerror.docx";
+            DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
+            FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+            FileInfo dataXml = new FileInfo(Path.Combine(sourceDir.FullName, "xmlerror.xml"));
+            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
+            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, name));
+            string templateName = outputDocx.FullName;
+            string resultName = Path.Combine(destDir.FullName, "xmlerror-assembled.docx");
+            templateDocx.CopyTo(templateName, true);
+            var assembler = new OpenDocx.Assembler();
+            AssembleResult assembleResult;
+            using (var xmlData = new StreamReader(dataXml.FullName, System.Text.Encoding.UTF8)) {
+                assembleResult = assembler.AssembleDocument(templateName, xmlData, resultName);
+            }
+            Assert.True(File.Exists(assembleResult.Document));
         }
 
         //[Fact]

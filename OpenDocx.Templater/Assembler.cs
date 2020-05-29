@@ -18,7 +18,7 @@ using OpenXmlPowerTools;
 
 namespace OpenDocx
 {
-    class Assembler
+    public class Assembler
     {
         public AssembleResult AssembleDocument(string templateFile, TextReader xmlData, string outputFile)
         {

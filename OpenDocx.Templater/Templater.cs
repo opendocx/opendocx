@@ -756,30 +756,34 @@ namespace OpenDocx
                     if (element.Name == OD.Else)
                     {
                         XElement lookUp = element.Parent;
-                        while (lookUp.Name != OD.If && lookUp.Name != OD.ElseIf)
+                        while (lookUp != null && lookUp.Name != OD.If && lookUp.Name != OD.ElseIf)
                             lookUp = lookUp.Parent;
-                        var selector = xm[lookUp.Attribute(OD.Id).Value].atomizedExpr + "2";
-                        var startElseText = "<" + PA.Conditional + " "
-                            + PA.Select + "=\"" + selector + "[1]\" "
-                            + PA.NotMatch + "=\"true\"/>"; // NotMatch instead of Match, represents "Else" branch
+                        // if lookUp == null, Something is wrong -- else not inside an if?
+                        if (lookUp != null)
+                        {
+                            var selector = xm[lookUp.Attribute(OD.Id).Value].atomizedExpr + "2";
+                            var startElseText = "<" + PA.Conditional + " "
+                                + PA.Select + "=\"" + selector + "[1]\" "
+                                + PA.NotMatch + "=\"true\"/>"; // NotMatch instead of Match, represents "Else" branch
 
-                        var content = element
-                            .Elements()
-                            .Select(e => ContentReplacementTransform(e, xm, templateError))
-                            .ToList();
-                        XElement startElseElem = new XElement(W.r, new XElement(W.t, startElseText));
-                        if (blockLevel) // block-level conditional
-                        {
-                            content.Insert(0, CCWrap(PWrap(endElem)));
-                            content.Insert(1, CCWrap(PWrap(startElseElem)));
+                            var content = element
+                                .Elements()
+                                .Select(e => ContentReplacementTransform(e, xm, templateError))
+                                .ToList();
+                            XElement startElseElem = new XElement(W.r, new XElement(W.t, startElseText));
+                            if (blockLevel) // block-level conditional
+                            {
+                                content.Insert(0, CCWrap(PWrap(endElem)));
+                                content.Insert(1, CCWrap(PWrap(startElseElem)));
+                            }
+                            else // run-level
+                            {
+                                content.Insert(0, CCWrap(endElem));
+                                content.Insert(1, CCWrap(startElseElem));
+                            }
+                            // no "end" tag for the "else" branch, because the end is inserted by the If element after all its contents
+                            return content;
                         }
-                        else // run-level
-                        {
-                            content.Insert(0, CCWrap(endElem));
-                            content.Insert(1, CCWrap(startElseElem));
-                        }
-                        // no "end" tag for the "else" branch, because the end is inserted by the If element after all its contents
-                        return content;
                     }
                 }
                 return new XElement(element.Name,
