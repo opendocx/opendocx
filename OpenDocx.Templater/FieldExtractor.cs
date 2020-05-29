@@ -170,8 +170,8 @@ namespace OpenDocx
                         .Trim();
                     int occurances = CountSubstring(FieldRecognizer.EmbedBegin, paraContents);
                     if (occurances == 1
-                        && paraContents.StartsWith(FieldRecognizer.EmbedBegin)
-                        && paraContents.EndsWith(FieldRecognizer.EmbedEnd))
+                        && paraContents.StartsWith(FieldRecognizer.EmbedBegin + FieldRecognizer.FieldBegin)
+                        && paraContents.EndsWith(FieldRecognizer.FieldEnd + FieldRecognizer.EmbedEnd))
                     {
                         var content = paraContents
                             .Substring(FieldRecognizer.EmbedBegin.Length,
@@ -193,8 +193,9 @@ namespace OpenDocx
                         }
                         // else fall through to (slower) case
                     }
-                    if (paraContents.Contains(FieldRecognizer.EmbedBegin) && paraContents.Contains(FieldRecognizer.FieldBegin))
+                    if (paraContents.Contains(FieldRecognizer.EmbedBegin + FieldRecognizer.FieldBegin))
                     {
+                        fieldAccumulator.RegisterNonFieldContentInBlock();
                         var runReplacementInfo = new List<XElement>();
                         var placeholderText = Guid.NewGuid().ToString();
                         var r = new Regex(

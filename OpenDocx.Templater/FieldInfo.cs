@@ -29,12 +29,17 @@ namespace OpenDocx
             blocks.Push(new FieldBlock());
         }
 
+        public void RegisterNonFieldContentInBlock()
+        {
+            blocks.Peek().RegisterOtherContent();
+        }
+
         public void EndBlock()
         {
             var block = blocks.Pop();
             if (!block.IsEmpty)
             {
-                if (block.FieldCount == 1)
+                if (block.FieldCount == 1 && !block.HasOtherContent)
                     blocks.Peek().AddField(block.GetItem(0));
                 else
                     blocks.Peek().AddField(block);
@@ -59,11 +64,14 @@ namespace OpenDocx
             public FieldBlock()
             {
                 list = new List<ExtractedItem>();
+                HasOtherContent = false;
             }
 
             public bool IsEmpty { get { return list.Count == 0; } }
 
             public int FieldCount { get { return list.Count; } }
+
+            public bool HasOtherContent { get; private set; }
 
             public ExtractedItem GetItem(int index)
             {
@@ -73,6 +81,10 @@ namespace OpenDocx
             public void AddField(ExtractedItem field)
             {
                 list.Add(field);
+            }
+            public void RegisterOtherContent()
+            {
+                HasOtherContent = true;
             }
             public string JsonSerialize()
             {
