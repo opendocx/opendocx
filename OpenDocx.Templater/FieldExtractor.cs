@@ -19,11 +19,21 @@ namespace OpenDocx
         public async Task<object> ExtractFieldsAsync(dynamic input)
         {
             var templateFile = (string)input.templateFile;
-            return ExtractFields(templateFile);
+            bool removeCustomProperties = true;
+            object[] keepPropertyNames = null;
+            var inputObj = (IDictionary<string, object>) input;
+            if (inputObj.ContainsKey("removeCustomProperties")) {
+                removeCustomProperties = (bool) inputObj["removeCustomProperties"];
+            }
+            if (inputObj.ContainsKey("keepPropertyNames")) {
+                keepPropertyNames = (object[]) inputObj["keepPropertyNames"];
+            }
+            return ExtractFields(templateFile, removeCustomProperties, keepPropertyNames?.Select(o => (string)o));
         }
         #pragma warning restore CS1998
 
-        public static FieldExtractResult ExtractFields(string templateFileName)
+        public static FieldExtractResult ExtractFields(string templateFileName,
+            bool removeCustomProperties = true, IEnumerable<string> keepPropertyNames = null)
         {
             string newTemplateFileName = templateFileName + "obj.docx";
             string outputFile = templateFileName + "obj.json";
@@ -36,7 +46,7 @@ namespace OpenDocx
                 mem.Write(byteArray, 0, byteArray.Length); // copy template file (binary) into memory -- I guess so the template/file handle isn't held/locked?
                 using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(mem, true)) // read & parse that byte array into OXML document (also in memory)
                 {
-                    ExtractAllTemplateFields(wordDoc, fieldAccumulator);
+                    ExtractAllTemplateFields(wordDoc, fieldAccumulator, removeCustomProperties, keepPropertyNames);
                 }
                 preprocessedTemplate = new WmlDocument(newTemplateFileName, mem.ToArray());
             }
@@ -52,7 +62,8 @@ namespace OpenDocx
             return new FieldExtractResult(newTemplateFileName, outputFile);
         }
 
-        private static void ExtractAllTemplateFields(WordprocessingDocument wordDoc, FieldAccumulator fieldAccumulator)
+        private static void ExtractAllTemplateFields(WordprocessingDocument wordDoc, FieldAccumulator fieldAccumulator,
+            bool removeCustomProperties = true, IEnumerable<string> keepPropertyNames = null)
         {
             if (RevisionAccepter.HasTrackedRevisions(wordDoc))
                 throw new FieldParseException("Invalid template - contains tracked revisions");
@@ -62,32 +73,44 @@ namespace OpenDocx
             {
                 ExtractFieldsFromPart(part, fieldAccumulator);
 
-                // remove document variables and custom properties
-                // (in case they have any sensitive information that should not carry over to assembled documents!)
-                MainDocumentPart main = part as MainDocumentPart;
-                if (main != null)
+                if (removeCustomProperties)
                 {
-                    var docVariables = main.DocumentSettingsPart.Settings.Descendants<DocumentVariables>();
-                    foreach (DocumentVariables docVars in docVariables.ToList())
+                    // remove document variables and custom properties
+                    // (in case they have any sensitive information that should not carry over to assembled documents!)
+                    MainDocumentPart main = part as MainDocumentPart;
+                    if (main != null)
                     {
-                        foreach (DocumentVariable docVar in docVars.ToList())
+                        var docVariables = main.DocumentSettingsPart.Settings.Descendants<DocumentVariables>();
+                        foreach (DocumentVariables docVars in docVariables.ToList())
                         {
-                            docVar.Remove();
-                            //docVar.Name = "Id";
-                            //docVar.Val.Value = "123";
+                            foreach (DocumentVariable docVar in docVars.ToList())
+                            {
+                                if (keepPropertyNames == null || !Enumerable.Contains<string>(keepPropertyNames, docVar.Name))
+                                {
+                                    docVar.Remove();
+                                    //docVar.Name = "Id";
+                                    //docVar.Val.Value = "123";
+                                }
+                            }
                         }
                     }
                 }
             }
-            // remove custom properties if there are any (custom properties are the new/non-legacy version of document variables)
-            var custom = wordDoc.CustomFilePropertiesPart;
-            if (custom != null)
+            if (removeCustomProperties)
             {
-                foreach (CustomDocumentProperty prop in custom.Properties.ToList())
+                // remove custom properties if there are any (custom properties are the new/non-legacy version of document variables)
+                var custom = wordDoc.CustomFilePropertiesPart;
+                if (custom != null)
                 {
-                    prop.Remove();
-                    // string propName = prop.Name;
-                    // string value = prop.VTLPWSTR.InnerText;
+                    foreach (CustomDocumentProperty prop in custom.Properties.ToList())
+                    {
+                        if (keepPropertyNames == null || !Enumerable.Contains<string>(keepPropertyNames, prop.Name))
+                        {
+                            prop.Remove();
+                            // string propName = prop.Name;
+                            // string value = prop.VTLPWSTR.InnerText;
+                        }
+                    }
                 }
             }
         }

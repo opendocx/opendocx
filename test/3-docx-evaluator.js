@@ -42,7 +42,7 @@ describe('Generating XML data for DOCX templates (white box)', function() {
         const templatePath = testUtil.GetTemplatePath('redundant_ifs.docx');
         let jsFile = templatePath + '.js';
         if (!fs.existsSync(jsFile)) {
-            const result = await openDocx.compileDocx(templatePath, false);
+            const result = await openDocx.compileDocx(templatePath, undefined, undefined, false);
             assert.equal(result.HasErrors, false);
             assert.equal(fs.existsSync(result.ExtractedLogic), true);
             assert.equal(fs.existsSync(result.DocxGenTemplate), true);
@@ -59,7 +59,7 @@ describe('Generating XML data for DOCX templates (white box)', function() {
         const templatePath = testUtil.GetTemplatePath('Syntax.docx');
         let jsFile = templatePath + '.js';
         if (!fs.existsSync(jsFile)) {
-            const result = await openDocx.compileDocx(templatePath, false);
+            const result = await openDocx.compileDocx(templatePath, undefined, undefined, false);
             assert.equal(result.HasErrors, false);
             assert.equal(fs.existsSync(result.ExtractedLogic), true);
             assert.equal(fs.existsSync(result.DocxGenTemplate), true);
@@ -89,7 +89,7 @@ describe('Generating XML data for DOCX templates (white box)', function() {
     });
     it('should assemble data XML that includes unanswered placeholders', async function() {
         const templatePath = testUtil.GetTemplatePath('SimpleWill2.docx');
-        const result = await openDocx.compileDocx(templatePath, false);
+        const result = await openDocx.compileDocx(templatePath, undefined, undefined, false);
         assert.equal(result.HasErrors, false);
         const jsFile = result.ExtractedLogic;
         //const compiledTemplate = result.DocxGenTemplate;
@@ -110,7 +110,7 @@ describe('Generating XML data for DOCX templates (white box)', function() {
     })
     it('should produce usable XML when an unconditional usage of a variable follows a conditional one', async function() {
         const templatePath = testUtil.GetTemplatePath('cond-uncond.docx');
-        const result = await openDocx.compileDocx(templatePath, false);
+        const result = await openDocx.compileDocx(templatePath, undefined, undefined, false);
         assert.equal(result.HasErrors, false);
         const jsFile = result.ExtractedLogic;
         //const compiledTemplate = result.DocxGenTemplate;
@@ -129,7 +129,7 @@ describe('Generating XML data for DOCX templates (white box)', function() {
     it('should produce usable XML and a valid assembled document for a simple "if x then x" template', async function() {
         // making sure x is emitted only once, whether it is truthy or falsy, so we don't get XML errors
         const templatePath = testUtil.GetTemplatePath('self-cond.docx');
-        const result = await openDocx.compileDocx(templatePath, false);
+        const result = await openDocx.compileDocx(templatePath, undefined, undefined, false);
         assert.equal(result.HasErrors, false);
         const jsFile = result.ExtractedLogic;
         //const compiledTemplate = result.DocxGenTemplate;
@@ -153,7 +153,7 @@ describe('Generating XML data for DOCX templates (white box)', function() {
     })
     it('should create the expected XML for ifpoa.docx', async function() {
         const templatePath = testUtil.GetTemplatePath('ifpoa.docx');
-        const result = await openDocx.compileDocx(templatePath, false);
+        const result = await openDocx.compileDocx(templatePath, undefined, undefined, false);
         assert.equal(result.HasErrors, false);
         const jsFile = result.ExtractedLogic;
         //const compiledTemplate = result.DocxGenTemplate;
@@ -174,7 +174,7 @@ describe('Generating XML data for DOCX templates (white box)', function() {
     })
     it('should create the expected XML for BeneficiaryList.docx', async function() {
         const templatePath = testUtil.GetTemplatePath('BeneficiaryList.docx');
-        const result = await openDocx.compileDocx(templatePath, false);
+        const result = await openDocx.compileDocx(templatePath, undefined, undefined, false);
         assert.equal(result.HasErrors, false);
         const jsFile = result.ExtractedLogic;
         //const compiledTemplate = result.DocxGenTemplate;

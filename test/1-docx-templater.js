@@ -10,7 +10,7 @@ describe('Extracting fields from DOCX templates (white box)', async function() {
         this.timeout(10000); // definitely shouldn't take that long!!  But it can occasionally take a couple/few seconds.
         this.slow(2500);
         const templatePath = testUtil.GetTemplatePath('SimpleWill.docx');
-        const result = await opendocx.compileDocx(templatePath, false); // false to suppress cleanup of interim artifacts during compilation
+        const result = await opendocx.compileDocx(templatePath, undefined, undefined, false); // suppress cleanup of interim artifacts during compilation
         // results of initial field extraction:
         assert(fs.existsSync(result.ExtractedFields));
         let fields;
@@ -42,7 +42,7 @@ describe('Extracting fields from DOCX templates (white box)', async function() {
         this.timeout(10000); // definitely shouldn't take that long!!  But it can occasionally take a couple/few seconds.
         this.slow(2500);
         const templatePath = testUtil.GetTemplatePath('text_field_formatting.docx');
-        const result = await opendocx.compileDocx(templatePath, false); // false to suppress cleanup of interim artifacts during compilation
+        const result = await opendocx.compileDocx(templatePath, undefined, undefined, false); // suppress cleanup of interim artifacts during compilation
         // results of initial field extraction:
         assert(fs.existsSync(result.ExtractedFields));
         let fields;

@@ -8,7 +8,7 @@ describe('Producing files necessary for .NET Unit Tests to run', function() {
 
     async function generateFilesFor(name) {
         const templatePath = testUtil.GetTemplateNetPath(name);
-        return await openDocx.compileDocx(templatePath, false); // false == don't clean up artifacts
+        return await openDocx.compileDocx(templatePath, undefined, undefined, false);
     }
 
     it('generates files for SimpleWill.docx', async function() {
@@ -57,6 +57,11 @@ describe('Producing files necessary for .NET Unit Tests to run', function() {
     })
     it('generates files for list_punc_fmt.docx', async function() {
         const result = await generateFilesFor('list_punc_fmt.docx')
+        assert.equal(fs.existsSync(result.ExtractedLogic), true);
+    })
+    it('generates files for custom_props.docx', async function() {
+        const templatePath = testUtil.GetTemplateNetPath('custom_props.docx');
+        const result = await openDocx.compileDocx(templatePath, true, ['UpdateFields'], false);
         assert.equal(fs.existsSync(result.ExtractedLogic), true);
     })
 

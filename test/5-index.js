@@ -8,7 +8,7 @@ const testUtil = require('./test-utils');
 describe('Full logic trees for DOCX Templates (experimental, white box)', function() {
     it('should produce a "logic tree" for a DOCX template and all its fields', async function() {
         const templatePath = testUtil.GetTemplatePath('TestNest.docx');
-        let compiled = await openDocx.compileDocx(templatePath, false); // false suppresses cleanup of interim artifacts, and in fact produces extras such as this experimental AST
+        let compiled = await openDocx.compileDocx(templatePath, undefined, undefined, false); // suppresses cleanup of interim artifacts, and in fact produces extras such as this experimental AST
         assert(fs.existsSync(compiled.ExtractedLogicTree));
         let astLogic;
         assert.doesNotThrow(()=>{
@@ -18,7 +18,7 @@ describe('Full logic trees for DOCX Templates (experimental, white box)', functi
     })
     it('should not include redundant expressions when it includes the same if field multiple times', async function() {
         const templatePath = testUtil.GetTemplatePath('redundant_if.docx');
-        let compiled = await openDocx.compileDocx(templatePath, false); // false suppresses cleanup of interim artifacts, and in fact produces extras such as this experimental AST
+        let compiled = await openDocx.compileDocx(templatePath, undefined, undefined, false); // suppresses cleanup of interim artifacts, and in fact produces extras such as this experimental AST
         assert(fs.existsSync(compiled.ExtractedLogicTree));
         let astLogic;
         assert.doesNotThrow(()=>{

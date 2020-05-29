@@ -9,13 +9,20 @@ const Atomizer = require('./string-atomizer')
 const version = require('./version')
 const loadTemplateModule = require('./load-template-module')
 
-async function compileDocx (templatePath) {
-  // secret second parameter:
-  const cleanUpArtifacts = (arguments.length > 1) ? arguments[1] : true
+async function compileDocx (
+  templatePath,
+  removeCustomProperties = true,
+  keepPropertyNames = [],
+  cleanUpArtifacts = true
+) {
   // first pre-process the given template file, which
   //    (1) leaves a unique "tag" on each field in the template, which we will use to refer to those fields later; and
   //    (2) extracts the content of each fields (in order) into a JSON file for further processing
-  const options = { templateFile: templatePath }
+  const options = {
+    templateFile: templatePath,
+    removeCustomProperties,
+    keepPropertyNames
+  }
   const result = await docxTemplater.extractFields(options)
   const fieldList = JSON.parse(fs.readFileSync(result.ExtractedFields, 'utf8'))
   // use the yatte engine to parse all the fields, creating an AST for the template

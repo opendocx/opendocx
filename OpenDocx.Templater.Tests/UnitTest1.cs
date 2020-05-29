@@ -154,6 +154,28 @@ namespace OpenDocxTemplater.Tests
             Assert.True(File.Exists(extractResult.TempTemplate));
         }
 
+        [Theory]
+        [InlineData("Married RLT Plain.docx")]
+        [InlineData("text_field_formatting.docx")]
+        [InlineData("kMANT.docx")]
+        public async void FieldExtractorAsync(string name)
+        {
+            DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
+            FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
+            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, name));
+            string templateName = outputDocx.FullName;
+            templateDocx.CopyTo(templateName, true);
+            dynamic options = new ExpandoObject();
+            options.templateFile = templateName;
+            options.removeCustomProperties = true;
+            options.keepPropertyNames = new object[] { "UpdateFields" };
+            var od = new OpenDocx.FieldExtractor();
+            var extractResult = await od.ExtractFieldsAsync(options);
+            Assert.True(File.Exists(extractResult.ExtractedFields));
+            Assert.True(File.Exists(extractResult.TempTemplate));
+        }
+
         [Fact]
         public void XmlError()
         {
