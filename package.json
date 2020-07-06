@@ -37,7 +37,7 @@
     "path": "^0.12.7",
     "semver": "^6.1.1",
     "util": "^0.11.1",
-    "yatte": "^1.5.3"
+    "yatte": "^1.5.5"
   },
   "devDependencies": {
     "eslint": "^6.6.0",

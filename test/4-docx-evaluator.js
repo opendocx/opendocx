@@ -108,6 +108,19 @@ describe('Assembling documents from DOCX templates', function() {
         const validation = await templater.validateDocument({documentFile: result.Document});
         assert.ok(!validation.HasErrors, validation.ErrorList);
     })
+    it('should assemble (without errors) a document based on the quote1.docx template', async function() {
+        const templatePath = testUtil.GetTemplatePath('quote1.docx');
+        const evaluator = await openDocx.compileDocx(templatePath);
+        const data = {
+            D: {
+                T: "Children's Trust"
+            }
+        }
+        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), data);
+        assert.equal(result.HasErrors, false);
+        const validation = await templater.validateDocument({documentFile: result.Document});
+        assert.ok(!validation.HasErrors, validation.ErrorList);
+    })
 
 })
 

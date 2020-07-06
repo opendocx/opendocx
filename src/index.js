@@ -210,24 +210,24 @@ const serializeAstNodeAsDataJs = function (astNode, atoms, parent) {
   }
   switch (astNode.type) {
     case OD.Content:
-      return `h.define('${atom}','${astNode.expr}');`
+      return `h.define('${atom}','${escapeExpressionStr(astNode.expr)}');`
 
     case OD.List: {
       const a0 = atom + '0' // special atom representing individual items in the list, rather than the entire list
-      return `for(const ${a0} of h.beginList('${atom}', '${astNode.expr}'))
+      return `for(const ${a0} of h.beginList('${atom}', '${escapeExpressionStr(astNode.expr)}'))
 ${serializeContextInDataJs(astNode.contentArray, a0, a0, '', atoms, astNode)}
 h.endList();`
     }
 
     case OD.If:
-      return `if(h.beginCondition('${atom}','${astNode.expr}'))
+      return `if(h.beginCondition('${atom}','${escapeExpressionStr(astNode.expr)}'))
 {
 ${serializeContentArrayAsDataJs(astNode.contentArray, atoms, astNode)}
 }`
 
     case OD.ElseIf:
       return `} else {
-if(h.beginCondition('${atom}','${astNode.expr}'))
+if(h.beginCondition('${atom}','${escapeExpressionStr(astNode.expr)}'))
 {
 ${serializeContentArrayAsDataJs(astNode.contentArray, atoms, astNode)}
 }`
@@ -248,4 +248,10 @@ const serializeContentArrayAsDataJs = function (contentArray, atoms, parent) {
     sb.push(serializeAstNodeAsDataJs(obj, atoms, parent))
   }
   return sb.join('\n')
+}
+
+const singleQuotes = /(?<=\\\\)'|(?<!\\)'/g
+
+const escapeExpressionStr = function (strExpr) {
+  return strExpr.replace(singleQuotes, "\\'")
 }
