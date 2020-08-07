@@ -121,6 +121,19 @@ describe('Assembling documents from DOCX templates', function() {
         const validation = await templater.validateDocument({documentFile: result.Document});
         assert.ok(!validation.HasErrors, validation.ErrorList);
     })
+    it('should assemble (correctly) the whitespace.docx template', async function() {
+        const templatePath = testUtil.GetTemplatePath('whitespace.docx');
+        const evaluator = await openDocx.compileDocx(templatePath);
+        const data = {
+            whitespace: "                  ",
+            nobreak:    "                  ",
+        }
+        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'),
+            data, null, testUtil.FileNameAppend(templatePath, '-asmdata.xml'));
+        assert.equal(result.HasErrors, false);
+        const validation = await templater.validateDocument({documentFile: result.Document});
+        assert.ok(!validation.HasErrors, validation.ErrorList);
+    })
 
 })
 
