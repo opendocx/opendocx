@@ -112,41 +112,90 @@ async function validateCompiledDocx (templatePath) {
 validateCompiledDocx.version = version
 exports.validateCompiledDocx = validateCompiledDocx
 
-async function assembleDocx (templatePath, outputFile, data, locals, optionalSaveXmlFile) {
-  // templatePath should have been compiled (previously) so the expected files will be on disk
+async function assembleDocx (template, outputFile, data, getTemplatePath, optionalSaveXmlFile) {
+  if (typeof template !== 'string' && typeof getTemplatePath === 'function') {
+    template = await getTemplatePath(template)
+  }
+  // template should have been compiled (previously) so the expected files will be on disk
   // but if not we'll compile it now
   let result
-  const { ExtractedLogic, DocxGenTemplate } = await validateCompiledDocx(templatePath)
+  const { ExtractedLogic, DocxGenTemplate } = await validateCompiledDocx(template)
   const dataAssembler = new XmlAssembler(data)
   const xmlData = dataAssembler.assembleXml(ExtractedLogic)
-  if (!dataAssembler.errors || dataAssembler.errors.length === 0) {
-    try {
-      if (optionalSaveXmlFile) {
-        fs.writeFileSync(optionalSaveXmlFile, xmlData)
-      }
-      result = await docxTemplater.assembleDocument({
-        templateFile: DocxGenTemplate,
-        xmlData,
-        documentFile: outputFile,
-      })
-      result.Missing = Object.keys(dataAssembler.missing)
-      result.Errors = []
-    } catch (e) {
-      result = {
-        Document: undefined,
-        Missing: Object.keys(dataAssembler.missing),
-        Errors: [e.message],
-        HasErrors: true,
-      }
-    }
-  } else { // errors were encountered while creating the XML -- don't asm
+  if (dataAssembler.errors && dataAssembler.errors.length > 0) {
+    // errors were encountered while creating the XML -- don't assemble
     if (optionalSaveXmlFile) {
       fs.writeFileSync(optionalSaveXmlFile, dataAssembler.errors.join('\n'))
     }
-    result = {
+    return ({
       Document: undefined,
       Missing: Object.keys(dataAssembler.missing),
       Errors: dataAssembler.errors,
+      HasErrors: true,
+    })
+  }
+  // no error in creation of primary XML... assemble inserted indirects if there are any
+  const hasInserts = dataAssembler.indirects && dataAssembler.indirects.length > 0
+  if (hasInserts) {
+    // const destDir = path.dirname(outputFile)
+    const insertPromises = dataAssembler.indirects.map(indir => assembleDocx(indir, null, indir.scope, getTemplatePath))
+    const inserts = await Promise.all(insertPromises)
+    inserts.forEach((sub, idx) => {
+      dataAssembler.indirects[idx].result = sub
+    })
+  }
+  try {
+    if (optionalSaveXmlFile) {
+      fs.writeFileSync(optionalSaveXmlFile, xmlData)
+    }
+    // assemble "main" document
+    const mainDoc = await docxTemplater.assembleDocument({
+      templateFile: DocxGenTemplate,
+      xmlData,
+      documentFile: hasInserts ? null : outputFile,
+    })
+    const missingObj = dataAssembler.missing
+    const errors = mainDoc.HasErrors ? ['Assembly error'] : []
+    if (hasInserts) {
+      // tally errors from inserts while preparing for composition
+      const sources = [{
+        id: null,
+        buffer: mainDoc.Bytes,
+      }]
+      for (const sub of dataAssembler.indirects) {
+        sub.result.Missing.forEach(m => {
+          missingObj[m] = true
+        })
+        sub.result.Errors.forEach(e => {
+          errors.push(e)
+        })
+        sources.push({ id: sub.id, buffer: sub.result.Bytes })
+      }
+      if (errors.length === 0) {
+        result = await docxTemplater.composeDocument({
+          documentFile: outputFile,
+          sources,
+        })
+        result.Missing = Object.keys(missingObj)
+        result.Errors = result.HasErrors ? ['Composition error'] : errors
+      } else {
+        result = {
+          Document: undefined,
+          Missing: Object.keys(missingObj),
+          Errors: errors,
+          HasErrors: true,
+        }
+      }
+    } else { // no inserts
+      result = mainDoc
+      result.Missing = Object.keys(missingObj)
+      result.Errors = errors
+    }
+  } catch (e) {
+    result = {
+      Document: undefined,
+      Missing: Object.keys(dataAssembler.missing),
+      Errors: [e.message],
       HasErrors: true,
     }
   }

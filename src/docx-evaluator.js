@@ -1,11 +1,13 @@
 'use strict'
 
-const { Scope, Engine } = require('yatte')
+const { Scope, Engine, IndirectVirtual } = require('yatte')
+const uuidv4 = require('uuid/v4')
 const XmlDataBuilder = require('./xmlbuilder')
 const loadTemplateModule = require('./load-template-module')
 
 class XmlAssembler {
   constructor (scope) {
+    this.indirects = []
     this.missing = {}
     this.errors = []
     this.contextStack = null
@@ -48,19 +50,24 @@ class XmlAssembler {
 
     const evaluator = Engine.compileExpr(expr) // these are cached so this should be fast
     let value = frame.evaluate(evaluator) // we need to make sure this is memoized to avoid unnecessary re-evaluation
-    if (value && (typeof value === 'object') && (value.errors || value.missing)) {
-      // value is a yatte EvaluationResult, probably because of nested template evaluation
-      if (value.missing && value.missing.length > 0) {
-        value.missing.forEach((expr) => { this.missing[expr] = true })
-      }
-      if (value.errors && value.errors.length > 0) {
-        value.errors.forEach((errmsg) => { this.errors.push(errmsg) })
-      }
-      value = value.valueOf() // get the actual evaluated value
-    }
     if (value === null || typeof value === 'undefined') {
       this.missing[expr] = true
       value = '[' + expr + ']' // missing value placeholder
+    } else if (typeof value === 'object') {
+      if (value instanceof IndirectVirtual) {
+        value.id = uuidv4()
+        this.indirects.push(value)
+        value = `{{${value.id}}}`
+      } else if (value.errors || value.missing) {
+        // value is a yatte EvaluationResult, probably because of nested template evaluation
+        if (value.missing && value.missing.length > 0) {
+          value.missing.forEach((expr) => { this.missing[expr] = true })
+        }
+        if (value.errors && value.errors.length > 0) {
+          value.errors.forEach((errmsg) => { this.errors.push(errmsg) })
+        }
+        value = value.valueOf() // get the actual evaluated value
+      }
     }
     if (value === '') {
       this.xmlStack.set(ident, undefined)

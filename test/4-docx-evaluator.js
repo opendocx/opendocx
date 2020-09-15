@@ -2,6 +2,7 @@ const openDocx = require("../src/index");
 const templater = require('../src/docx-templater');
 const assert = require('assert');
 const testUtil = require('./test-utils');
+const { Scope, IndirectVirtual } = require('yatte')
 
 describe('Assembling documents from DOCX templates', function() {
     it('should assemble (without errors) a document based on the SimpleWill.docx template', async function() {
@@ -40,7 +41,7 @@ describe('Assembling documents from DOCX templates', function() {
         const compileResult = await openDocx.compileDocx(templatePath);
         const data = BradyTestData;
 
-        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), {Date}, data);
+        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), data);
         assert.equal(result.HasErrors, false);
         const validation = await templater.validateDocument({documentFile: result.Document});
         // todo: figure out how to look in the file and make sure the text is right :-)
@@ -51,7 +52,7 @@ describe('Assembling documents from DOCX templates', function() {
         const compileResult = await openDocx.compileDocx(templatePath);
         const data = BradyTestData;
 
-        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), {Date}, data, testUtil.FileNameAppend(templatePath, '-asmdata.xml'));
+        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), data, null, testUtil.FileNameAppend(templatePath, '-asmdata.xml'));
         assert.equal(result.HasErrors, false);
         const validation = await templater.validateDocument({documentFile: result.Document});
         // todo: figure out how to look in the file and make sure the text is right :-)
@@ -134,7 +135,25 @@ describe('Assembling documents from DOCX templates', function() {
         const validation = await templater.validateDocument({documentFile: result.Document});
         assert.ok(!validation.HasErrors, validation.ErrorList);
     })
-
+    it('should assemble (correctly) the inserttest.docx template', async function() {
+        const insertStub = (scope) => {
+            return new IndirectVirtual({ name: 'inserted.docx' }, scope)
+        }
+        insertStub.logic = true
+        const templatePath = testUtil.GetTemplatePath('inserttest.docx');
+        const evaluator = await openDocx.compileDocx(templatePath);
+        const data = {
+            Name: "John",
+            Insert: insertStub,
+        }
+        const scope = Scope.pushObject(data)
+        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'),
+            scope, async obj => testUtil.GetTemplatePath(obj.name),
+            testUtil.FileNameAppend(templatePath, '-asmdata.xml'));
+        assert.equal(result.HasErrors, false);
+        const validation = await templater.validateDocument({documentFile: result.Document});
+        assert.ok(!validation.HasErrors, validation.ErrorList);
+    })
 })
 
 const SimpleWillDemoContext = {
@@ -197,6 +216,7 @@ const SimpleWillDemoContext = {
 };
 
 const BradyTestData = {
+    Date,
     Children: [
         {
             Name:'Greg',
