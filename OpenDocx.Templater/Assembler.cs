@@ -32,9 +32,16 @@ namespace OpenDocx
                 Console.WriteLine("Errors in template.");
                 Console.WriteLine("See the assembled document to inspect errors.");
             }
-            //// save the output (even in the case of error, since error messages are in the file)
-            wmlAssembledDoc.SaveAs(outputFile);
-            return new AssembleResult(outputFile, templateError);
+            if (!string.IsNullOrEmpty(outputFile))
+            {
+                //// save the output (even in the case of error, since error messages are in the file)
+                wmlAssembledDoc.SaveAs(outputFile);
+                return new AssembleResult(outputFile, templateError);
+            }
+            else
+            {
+                return new AssembleResult(wmlAssembledDoc.DocumentByteArray, templateError);
+            }
         }
 
         // when calling from Node.js via Edge, we only get to pass one parameter

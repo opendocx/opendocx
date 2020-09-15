@@ -196,6 +196,67 @@ namespace OpenDocxTemplater.Tests
             Assert.True(File.Exists(assembleResult.Document));
         }
 
+        private AssembleResult AsmDoc(string name, string data, string outName)
+        {
+            DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
+            FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+            FileInfo dataXml = new FileInfo(Path.Combine(sourceDir.FullName, data));
+            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
+            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, templateDocx.Name));
+            string templateName = outputDocx.FullName;
+            string resultName = string.IsNullOrEmpty(outName) ? null : Path.Combine(destDir.FullName, outName);
+            templateDocx.CopyTo(templateName, true);
+            var assembler = new OpenDocx.Assembler();
+            AssembleResult assembleResult;
+            using (var xmlData = new StreamReader(dataXml.FullName, System.Text.Encoding.UTF8)) {
+                assembleResult = assembler.AssembleDocument(templateName, xmlData, resultName);
+            }
+            Assert.False(assembleResult.HasErrors);
+            return assembleResult;
+        }
+
+        [Theory]
+        [InlineData("SimpleWillC.docx", "SimpleWillC.xml", "SimpleWillC-assembled.docx")]
+        public void AssembleDocument(string name, string data, string outName)
+        {
+            var assembleResult = AsmDoc(name, data, outName);
+            Assert.True(File.Exists(assembleResult.Document));
+        }
+
+        [Fact]
+        public void ComposeDocument()
+        {
+            var result1 = AsmDoc("inserttestc.docx", "inserttestc.xml", null);
+            var result2 = AsmDoc("insertedc.docx", "inserttestc.xml", null);
+            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
+            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, "inserttestc-composed.docx"));
+            var composer = new OpenDocx.Composer();
+            List<Source> sources = new List<Source>()
+                {
+                    new Source(new WmlDocument(new OpenXmlPowerToolsDocument(result1.Bytes)), true),
+                    new Source(new WmlDocument(new OpenXmlPowerToolsDocument(result2.Bytes)), "inserted"),
+                };
+            var result3 = composer.ComposeDocument(outputDocx.FullName, sources);
+            Assert.True(File.Exists(result3.Document));
+        }
+
+        [Fact]
+        public void ComposeDocument2()
+        {
+            var result1 = AsmDoc("inserttestd.docx", "inserttestc.xml", null);
+            var result2 = AsmDoc("insertedc.docx", "inserttestc.xml", null);
+            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
+            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, "inserttestd-composed.docx"));
+            var composer = new OpenDocx.Composer();
+            List<Source> sources = new List<Source>()
+                {
+                    new Source(new WmlDocument(new OpenXmlPowerToolsDocument(result1.Bytes)), true),
+                    new Source(new WmlDocument(new OpenXmlPowerToolsDocument(result2.Bytes)), "inserted"),
+                };
+            var result3 = composer.ComposeDocument(outputDocx.FullName, sources);
+            Assert.True(File.Exists(result3.Document));
+        }
+
         //[Fact]
         //public void CompileTemplateSync()
         //{
