@@ -58,6 +58,8 @@ class XmlAssembler {
         value.id = uuidv4()
         this.indirects.push(value)
         value = `{{${value.id}}}`
+        // value = `{DocumentBuilder:Insert{${value.id}}}`
+        // value = `<ptox:Insert Id="${value.id}" xmlns:ptox="http://powertools.codeplex.com/documentbuilder/2011/insert" />`
       } else if (value.errors || value.missing) {
         // value is a yatte EvaluationResult, probably because of nested template evaluation
         if (value.missing && value.missing.length > 0) {
