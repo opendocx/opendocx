@@ -44,9 +44,9 @@ namespace OpenDocx
             // where each object has (1) a unique ID, and (2) an array of bytes consisting of its contents
             var documentFile = (string)input.documentFile;
             var rawSources = (object[])input.sources;
-            if (string.IsNullOrWhiteSpace(documentFile) || rawSources == null || rawSources.Length == 0)
+            if (rawSources == null || rawSources.Length == 0)
             {
-                throw new ArgumentException("Invalid argument supplied to ComposeDocument");
+                throw new ArgumentException("Invalid sources argument supplied to ComposeDocument");
             }
             List<Source> sources = new List<Source>(rawSources.Select(rawSource => {
                 var sourceObj = (IDictionary<string, object>)rawSource;
