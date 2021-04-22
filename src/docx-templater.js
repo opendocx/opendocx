@@ -1,7 +1,12 @@
+console.log('Initializing edge-js...')
+console.log(`  NUGET_PACKAGES = ${process.env.NUGET_PACKAGES}`)
+console.log(`  USERPROFILE = ${process.env.USERPROFILE}`)
+console.log(`  HOME = ${process.env.HOME}`)
+console.log(`  OPENDOCX = ${__dirname}`)
 const path = require('path')
 const baseNetAppPath = path.join(__dirname, '..', 'OpenDocx.Templater', 'bin', 'Debug', 'netcoreapp2.0')
-// console.log('baseNetAppPath = ' + baseNetAppPath);
-process.env.EDGE_USE_CORECLR = '2.0'
+process.env.EDGE_USE_CORECLR = '1'
+console.log(`  EDGE_APP_ROOT = ${baseNetAppPath}`)
 process.env.EDGE_APP_ROOT = baseNetAppPath
 
 const util = require('util')
