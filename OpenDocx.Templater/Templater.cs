@@ -41,6 +41,7 @@ namespace OpenDocx
             var preProcessedTemplateFile = (string)input.templateFile;
             var originalTemplateFile = (string)input.originalTemplateFile;
             var parsedFieldInfoFile = (string)input.fieldInfoFile;
+            await Task.Yield();
             return CompileTemplate(originalTemplateFile, preProcessedTemplateFile, parsedFieldInfoFile);
         }
         #pragma warning restore CS1998

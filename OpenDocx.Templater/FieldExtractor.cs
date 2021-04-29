@@ -28,6 +28,7 @@ namespace OpenDocx
             if (inputObj.ContainsKey("keepPropertyNames")) {
                 keepPropertyNames = (object[]) inputObj["keepPropertyNames"];
             }
+            await Task.Yield();
             return ExtractFields(templateFile, removeCustomProperties, keepPropertyNames?.Select(o => (string)o));
         }
         #pragma warning restore CS1998

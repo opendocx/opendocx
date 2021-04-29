@@ -45,28 +45,25 @@ namespace OpenDocx
         }
 
         // when calling from Node.js via Edge, we only get to pass one parameter
-        public object AssembleDocument(dynamic input)
-        {
-            using (var xmlData = new StringReader((string)input.xmlData))
-            {
-                try
-                {
-                    return AssembleDocument((string)input.templateFile, xmlData, (string)input.documentFile);
-                }
-                catch (XmlException e)
-                {
-                    e.Data.Add("xml", (string)input.xmlData);
-                    throw e;
-                }
-            }
-        }
-
-        // assembly is synchronous, but when calling from Node.js (via Edge) we may still need an async method
+        // assembly is synchronous, but when calling from Node.js (via Edge) we still need an async method
         #pragma warning disable CS1998
         public async Task<object> AssembleDocumentAsync(dynamic input)
         {
-            //await Task.Yield();
-            return AssembleDocument(input);
+            var xmlData = (string)input.xmlData;
+            var templateFile = (string)input.templateFile;
+            var documentFile = (string)input.documentFile;
+            await Task.Yield();
+            using (var xmlReader = new StringReader(xmlData)) {
+                try
+                {
+                    return AssembleDocument(templateFile, xmlReader, documentFile);
+                }
+                catch (XmlException e)
+                {
+                    e.Data.Add("xml", xmlData);
+                    throw e;
+                }
+            }
         }
         #pragma warning restore CS1998
 

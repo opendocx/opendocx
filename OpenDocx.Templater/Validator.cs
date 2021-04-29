@@ -59,6 +59,7 @@ namespace OpenDocx
         public async Task<object> ValidateDocumentAsync(dynamic input)
         {
             var documentFile = (string)input.documentFile;
+            await Task.Yield();
             return ValidateDocument(documentFile);
         }
         #pragma warning restore CS1998
