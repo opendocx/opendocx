@@ -29,6 +29,14 @@ exports.compileTemplate = util.promisify(
   })
 )
 
+exports.flattenFields = util.promisify(
+  edge.func({
+    assemblyFile: baseDll,
+    typeName: 'OpenDocx.CCRemover',
+    methodName: 'RemoveCCsAsync'
+  })
+)
+
 exports.assembleDocument = util.promisify(
   edge.func({
     assemblyFile: baseDll,
