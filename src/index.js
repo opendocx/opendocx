@@ -4,10 +4,12 @@ const docxTemplater = require('./docx-templater')
 const XmlAssembler = require('./docx-evaluator')
 const yatte = require('yatte')
 const fs = require('fs')
+// const { Transform } = require('stream')
 const OD = yatte.FieldTypes
 const Atomizer = require('./string-atomizer')
 const version = require('./version')
 const loadTemplateModule = require('./load-template-module')
+const { docxToMarkdown, markdownToDocx } = require('./pandoc')
 
 async function compileDocx (
   templatePath,
@@ -24,7 +26,11 @@ async function compileDocx (
     keepPropertyNames
   }
   const result = await docxTemplater.extractFields(options)
+  options.originalTemplateFile = templatePath
+  options.templateFile = result.TempTemplate
+  const previewPromise = docxTemplater.flattenFields(options)
   const fieldList = JSON.parse(fs.readFileSync(result.ExtractedFields, 'utf8'))
+  const fieldLookup = indexFields(fieldList)
   // use the yatte engine to parse all the fields, creating an AST for the template
   const ast = yatte.Engine.parseContentArray(fieldList)
   // create a map from field ID to nodes in the AST, and save it in a temp file
@@ -51,16 +57,65 @@ async function compileDocx (
   ttpl.ExtractedLogic = outputJsPath
   // will be investingating other ways of processing the AST dynamically,
   // so maybe we just write out the .json rather than .js at all?  Might be more secure.
+  const previewResult = await previewPromise // make sure this is done before cleanup
+  // TODO: the following streaming code works, but the converted Markdown ends with a line break (\n) that we want
+  // to truncate, and I am not sure how to do that with the streaming code.  So we are reading everything into memory
+  // instead, for now.
+  // const fieldReplaceTransform = new Transform({
+  //   transform (chunk, encoding, callback) {
+  //     const schunk = chunk.toString('utf-8')
+  //       .replace(/\r\n/g, '\n')
+  //     schunk.split(/=:(\d+):=/g)
+  //       .forEach((item, index) => {
+  //         if (index % 2 === 0) {
+  //           this.push(item)
+  //         } else {
+  //           this.push(`{[${fieldLookup[item]}]}`)
+  //         }
+  //       })
+  //     callback()
+  //   }
+  // })
+  // const translatedPreviewPromise = new Promise((resolve, reject) => {
+  //   const inputStream = fs.createReadStream(previewResult.DocxGenTemplate)
+  //   const outputStream = fs.createWriteStream(templatePath + '.md')
+  //   docxToMarkdown.stream(inputStream)
+  //     .pipe(fieldReplaceTransform)
+  //     .pipe(outputStream)
+  //     .on('finish', resolve)
+  //     .on('error', reject)
+  // })
+  // await translatedPreviewPromise
+
+  const markdownStream = docxToMarkdown.stream(fs.createReadStream(previewResult.DocxGenTemplate))
+  const chunks = []
+  for await (const chunk of markdownStream) {
+    chunks.push(chunk)
+  }
+  const buffer  = Buffer.concat(chunks)
+  let previewStr = buffer.toString('utf-8')
+    .replace(/\r\n/g, '\n') // normalize line breaks
+  if (previewStr.endsWith('\n')) {
+    previewStr = previewStr.slice(0, -1) // truncate final line break
+  }
+  // reconstitute fields
+  previewStr = previewStr.split(/=:(\d+):=/g)
+    .map((item, index) => (index % 2) === 0 ? item : `{[${fieldLookup[item]}]}`)
+    .join('')
+  // persist in preview file
+  await fs.promises.writeFile((ttpl.Preview = templatePath + '.md'), previewStr, 'utf-8')
 
   // clean up interim/temp/obj files
   if (cleanUpArtifacts) {
     fs.unlinkSync(result.ExtractedFields)
     fs.unlinkSync(fieldDictPath)
     fs.unlinkSync(result.TempTemplate)
+    fs.unlinkSync(previewResult.DocxGenTemplate)
   } else {
     ttpl.ExtractedFields = result.ExtractedFields
     ttpl.FieldMap = fieldDictPath
     ttpl.TempTemplate = result.TempTemplate
+    ttpl.TempPreview = previewResult.DocxGenTemplate
   }
   // result looks like:
   // {
@@ -68,6 +123,7 @@ async function compileDocx (
   //      ExtractedLogic: "c:\path\to\template.docx.js",
   //      ExtractedLogicTree: "c:\path\to\template.docx.json",
   //      DocxGenTemplate: "c:\path\to\template.docxgen.docx",
+  //      Preview: "c:\path\to\template.docx.md",
   //      HasErrors: false,
   //      Errors: [], // if there are errors, this is an array of strings
   // }
@@ -138,7 +194,22 @@ async function assembleDocx (template, outputFile, data, getTemplatePath, option
   const hasInserts = dataAssembler.indirects && dataAssembler.indirects.length > 0
   if (hasInserts) {
     // const destDir = path.dirname(outputFile)
-    const insertPromises = dataAssembler.indirects.map(indir => assembleDocx(indir, null, indir.scope, getTemplatePath))
+    const insertPromises = dataAssembler.indirects.map(indir => {
+      if ((indir.contentType === 'markdown' || indir.contentType === 'text') && indir.toString) {
+        const mdContent = indir.toString() // todo: get Missing and Errors from this (if any) and pass on below!
+        return markdownToDocx(mdContent, DocxGenTemplate)
+          .then(buffer => ({
+            Bytes: buffer,
+            Document: null,
+            Missing: [],
+            Errors: [],
+            HasErrors: false
+          }))
+      } else if (!indir.contentType || indir.contentType === 'docx') {
+        return assembleDocx(indir, null, indir.scope, getTemplatePath)
+      }
+      return null // error
+    })
     const inserts = await Promise.all(insertPromises)
     inserts.forEach((sub, idx) => {
       dataAssembler.indirects[idx].result = sub
@@ -163,12 +234,16 @@ async function assembleDocx (template, outputFile, data, getTemplatePath, option
         buffer: mainDoc.Bytes,
       }]
       for (const sub of dataAssembler.indirects) {
-        sub.result.Missing.forEach(m => {
-          missingObj[m] = true
-        })
-        sub.result.Errors.forEach(e => {
-          errors.push(e)
-        })
+        if (sub.result.Missing) {
+          sub.result.Missing.forEach(m => {
+            missingObj[m] = true
+          })
+        }
+        if (sub.result.Errors) {
+          sub.result.Errors.forEach(e => {
+            errors.push(e)
+          })
+        }
         sources.push({ id: sub.id, buffer: sub.result.Bytes })
       }
       if (errors.length === 0) {
@@ -203,6 +278,17 @@ async function assembleDocx (template, outputFile, data, getTemplatePath, option
 }
 assembleDocx.version = version
 exports.assembleDocx = assembleDocx
+
+const indexFields = function (fieldList, lookup = []) {
+  for (const fldObj of fieldList) {
+    if (Array.isArray(fldObj)) {
+      indexFields(fldObj, lookup)
+    } else {
+      lookup[fldObj.id] = fldObj.content
+    }
+  }
+  return lookup
+}
 
 const buildFieldDictionary = function (astBody, fieldDict, atoms, parent = null) {
   for (const obj of astBody) {

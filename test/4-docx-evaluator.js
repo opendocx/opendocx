@@ -1,8 +1,9 @@
-const openDocx = require("../src/index");
-const templater = require('../src/docx-templater');
-const assert = require('assert');
-const testUtil = require('./test-utils');
-const { Scope, IndirectVirtual } = require('yatte')
+const openDocx = require('../src/index')
+const templater = require('../src/docx-templater')
+const assert = require('assert')
+const testUtil = require('./test-utils')
+const { assembleText, compileText, Scope, IndirectVirtual } = require('yatte')
+const fs = require('fs')
 
 describe('Assembling documents from DOCX templates', function() {
     it('should assemble (without errors) a document based on the SimpleWill.docx template', async function() {
@@ -137,7 +138,7 @@ describe('Assembling documents from DOCX templates', function() {
     })
     it('should assemble (correctly) the inserttest.docx template', async function() {
         const insertStub = (scope) => {
-            return new IndirectVirtual({ name: 'inserted.docx' }, scope)
+            return new IndirectVirtual({ name: 'inserted.docx' }, scope, 'docx')
         }
         insertStub.logic = true
         const templatePath = testUtil.GetTemplatePath('inserttest.docx');
@@ -153,6 +154,40 @@ describe('Assembling documents from DOCX templates', function() {
         assert.equal(result.HasErrors, false);
         const validation = await templater.validateDocument({documentFile: result.Document});
         assert.ok(!validation.HasErrors, validation.ErrorList);
+    })
+    it('should create markdown previews of docx for insertion into text', async function () {
+        const iTemplatePath = testUtil.GetTemplatePath('inserted2.docx');
+        const compiledInsertTemplate = await openDocx.compileDocx(iTemplatePath);
+        let previewContent = await fs.promises.readFile(compiledInsertTemplate.Preview, { encoding: 'utf-8' })
+        const data = {
+          Name: "John",
+          Inserted: compileText(previewContent),
+        }
+        const scope = Scope.pushObject(data)
+        const template = 'Document about **{[Name]}**:\n\n{[Inserted]}\n\n--{[Name]}'
+        const result = assembleText(template, scope)
+        assert.strictEqual(result.value,
+          'Document about **John**:\n\nThis is an **inserted template**, *John*.\n\n--John')
+    })
+    it('should convert markdown to docx for inserting formatted text into parent docx', async function () {
+        const insertStub = (scope) => {
+            return new IndirectVirtual({ toString: () => 'A **hyperlink**: [Duck Duck Go](https://duckduckgo.com)' },
+            scope, 'markdown')
+        }
+        insertStub.logic = true // is this needed??
+        const templatePath = testUtil.GetTemplatePath('inserttest.docx');
+        const evaluator = await openDocx.compileDocx(templatePath);
+        const data = {
+            Name: "John",
+            Insert: insertStub,
+        }
+        const scope = Scope.pushObject(data)
+        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled2'),
+            scope, async obj => testUtil.GetTemplatePath(obj.name),
+            testUtil.FileNameAppend(templatePath, '-asmdata2.xml'));
+        assert.strictEqual(result.HasErrors, false, result.Errors.join('\n'));
+        // const validation = await templater.validateDocument({documentFile: result.Document});
+        // assert.ok(!validation.HasErrors, validation.ErrorList);
     })
 })
 
