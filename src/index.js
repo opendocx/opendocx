@@ -137,6 +137,7 @@ async function validateCompiledDocx (templatePath) {
   // but if not we'll compile it now
   const extractedLogic = templatePath + '.js'
   const docxGenTemplate = templatePath + 'gen.docx'
+  const previewTemplate = templatePath + '.md'
   let needRegen = false
   if (!fs.existsSync(extractedLogic) || !fs.existsSync(docxGenTemplate)) {
     console.log('Warning: compiled template not found; generating. Pre-compile to maximize performance\n    '
@@ -161,6 +162,9 @@ async function validateCompiledDocx (templatePath) {
       ExtractedLogic: extractedLogic,
       ExtractedLogicTree: templatePath + '.json',
       DocxGenTemplate: docxGenTemplate,
+    }
+    if (fs.existsSync(previewTemplate)) {
+      compileResult.Preview = previewTemplate
     }
   }
   return compileResult
