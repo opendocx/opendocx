@@ -176,6 +176,27 @@ namespace OpenDocxTemplater.Tests
             Assert.True(File.Exists(extractResult.TempTemplate));
         }
 
+        [Theory]
+        [InlineData("has_taskpanes.docx")]
+        public async void RemoveTaskPanes(string name)
+        {
+            DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
+            FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
+            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, name));
+            string templateName = outputDocx.FullName;
+            templateDocx.CopyTo(templateName, true);
+            dynamic options = new ExpandoObject();
+            options.templateFile = templateName;
+            var od = new OpenDocx.FieldExtractor();
+            var extractResult = await od.ExtractFieldsAsync(options);
+            Assert.True(File.Exists(extractResult.TempTemplate));
+            // ensure interim template (which SHOULD no longer have task panes) still validates
+            var validator = new Validator();
+            var result = validator.ValidateDocument(extractResult.TempTemplate);
+            Assert.False(result.HasErrors, result.ErrorList);
+        }
+
         [Fact]
         public void XmlError()
         {

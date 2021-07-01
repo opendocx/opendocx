@@ -47,6 +47,9 @@ namespace OpenDocx
                 mem.Write(byteArray, 0, byteArray.Length); // copy template file (binary) into memory -- I guess so the template/file handle isn't held/locked?
                 using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(mem, true)) // read & parse that byte array into OXML document (also in memory)
                 {
+                    // first, remove all the task panes / web extension parts from the template (if there are any)
+                    wordDoc.DeleteParts<WebExTaskpanesPart>(wordDoc.GetPartsOfType<WebExTaskpanesPart>());
+                    // next, extract all fields (and thus logic) from the template's content parts
                     ExtractAllTemplateFields(wordDoc, fieldAccumulator, removeCustomProperties, keepPropertyNames);
                 }
                 preprocessedTemplate = new WmlDocument(newTemplateFileName, mem.ToArray());
