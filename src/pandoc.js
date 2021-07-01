@@ -29,7 +29,7 @@ const pandoc = (from, to, ...args) => {
   return converter
 }
 
-const docxToMarkdown = pandoc('docx', 'markdown')
+const docxToMarkdown = pandoc('docx', 'markdown', '-o', '-')
 const markdownToDocx = pandoc('markdown', 'docx', '-o', '-')
 
 exports.pandoc = pandoc
