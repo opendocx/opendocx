@@ -10,6 +10,7 @@ const Atomizer = require('./string-atomizer')
 const version = require('./version')
 const loadTemplateModule = require('./load-template-module')
 const { docxToMarkdown, markdownToDocx } = require('./pandoc')
+const asyncPool = require('tiny-async-pool')
 
 async function compileDocx (
   templatePath,
@@ -198,7 +199,7 @@ async function assembleDocx (template, outputFile, data, getTemplatePath, option
   const hasInserts = dataAssembler.indirects && dataAssembler.indirects.length > 0
   if (hasInserts) {
     // const destDir = path.dirname(outputFile)
-    const insertPromises = dataAssembler.indirects.map(indir => {
+    const inserts = await asyncPool(10, dataAssembler.indirects, async indir => {
       if ((indir.contentType === 'markdown' || indir.contentType === 'text') && indir.toString) {
         const mdContent = indir.toString() // todo: get Missing and Errors from this (if any) and pass on below!
         return markdownToDocx(mdContent, DocxGenTemplate)
@@ -211,10 +212,10 @@ async function assembleDocx (template, outputFile, data, getTemplatePath, option
           }))
       } else if (!indir.contentType || indir.contentType === 'docx') {
         return assembleDocx(indir, null, indir.scope, getTemplatePath)
+      } else {
+        throw new Error(`Unexpected '${indir.contentType}' content type encountered during indirect processing`)
       }
-      return null // error
     })
-    const inserts = await Promise.all(insertPromises)
     inserts.forEach((sub, idx) => {
       dataAssembler.indirects[idx].result = sub
     })
