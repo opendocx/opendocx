@@ -155,6 +155,25 @@ describe('Assembling documents from DOCX templates', function() {
         const validation = await templater.validateDocument({documentFile: result.Document});
         assert.ok(!validation.HasErrors, validation.ErrorList);
     })
+    it('should assemble (correctly) the inserttest3.docx template', async function() {
+        const insertStub = (scope) => {
+            return new IndirectVirtual({ name: 'inserted3.docx' }, scope, 'docx')
+        }
+        insertStub.logic = true
+        const templatePath = testUtil.GetTemplatePath('inserttest3.docx');
+        const evaluator = await openDocx.compileDocx(templatePath);
+        const data = {
+            Name: "John",
+            Insert: insertStub,
+        }
+        const scope = Scope.pushObject(data)
+        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'),
+            scope, async obj => testUtil.GetTemplatePath(obj.name),
+            testUtil.FileNameAppend(templatePath, '-asmdata.xml'));
+        assert.equal(result.HasErrors, false);
+        const validation = await templater.validateDocument({documentFile: result.Document});
+        assert.ok(!validation.HasErrors, validation.ErrorList);
+    })
     it('should create markdown previews of docx for insertion into text', async function () {
         const iTemplatePath = testUtil.GetTemplatePath('inserted2.docx');
         const compiledInsertTemplate = await openDocx.compileDocx(iTemplatePath);

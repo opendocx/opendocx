@@ -297,6 +297,40 @@ namespace OpenDocxTemplater.Tests
             Assert.True(File.Exists(result3.Document));
         }
 
+        [Fact]
+        public void ComposeDocument3()
+        {
+            var result1 = AsmDoc("insertteste.docx", "inserttestc.xml", null);
+            var result2 = AsmDoc("insertede.docx", "inserttestc.xml", null);
+            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
+            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, "insertteste-composed.docx"));
+            var composer = new OpenDocx.Composer();
+            List<Source> sources = new List<Source>()
+                {
+                    new Source(new WmlDocument(new OpenXmlPowerToolsDocument(result1.Bytes)), true),
+                    new Source(new WmlDocument(new OpenXmlPowerToolsDocument(result2.Bytes)), "inserted"),
+                };
+            var result3 = composer.ComposeDocument(outputDocx.FullName, sources);
+            Assert.True(File.Exists(result3.Document));
+        }
+
+        [Fact]
+        public void ComposeDocument4()
+        {
+            var result1 = AsmDoc("insertteste.docx", "inserttestc.xml", null);
+            var result2 = AsmDoc("insertedf.docx", "inserttestc.xml", null);
+            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
+            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, "inserttestf-composed.docx"));
+            var composer = new OpenDocx.Composer();
+            List<Source> sources = new List<Source>()
+                {
+                    new Source(new WmlDocument(new OpenXmlPowerToolsDocument(result1.Bytes)), true),
+                    new Source(new WmlDocument(new OpenXmlPowerToolsDocument(result2.Bytes)), "inserted"),
+                };
+            var result3 = composer.ComposeDocument(outputDocx.FullName, sources);
+            Assert.True(File.Exists(result3.Document));
+        }
+
         //[Fact]
         //public void CompileTemplateSync()
         //{
