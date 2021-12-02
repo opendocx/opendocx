@@ -12,7 +12,7 @@
     <PackageReference Include="Microsoft.CSharp" Version="4.5.0" />
     <PackageReference Include="Microsoft.DotNet.InternalAbstractions" Version="1.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="2.1.0" />
-    <PackageReference Include="OpenXmlPowerTools-NetStandard" Version="4.6.23-alpha3" />
+    <PackageReference Include="OpenXmlPowerTools-NetStandard" Version="4.6.23-alpha4" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="EdgeJs">
