@@ -55,13 +55,7 @@ class XmlAssembler {
       value = '[' + expr + ']' // missing value placeholder
     } else if (typeof value === 'object') {
       if (value instanceof IndirectVirtual) {
-        if (value.contentType === 'text') { // plain text
-          value = value.toString()
-        } else {
-          value.id = uuidv4()
-          this.indirects.push(value)
-          value = `{INSERT{${value.id}}}`
-        }
+        value = this.indirectSub(value)
       } else if (value.errors || value.missing) {
         // value is a yatte EvaluationResult, probably because of nested template evaluation
         if (value.missing && value.missing.length > 0) {
@@ -80,6 +74,24 @@ class XmlAssembler {
     } else {
       this.xmlStack.set(ident, value)
     }
+  }
+
+  indirectSub (indirect) {
+    if (indirect.contentType !== 'text') { // docx, markdown, etc... substitute special placeholder
+      // see if this indirect has already been encountered/added
+      const existing = this.indirects.find(ex => Object.keys(indirect).every(propName => (
+        indirect[propName] === ex[propName]
+      )))
+      if (existing) {
+        return `{INSERT{${existing.id}}}`
+      } else {
+        const newIndirect = { ...indirect, id: uuidv4() }
+        this.indirects.push(newIndirect)
+        return `{INSERT{${newIndirect.id}}}`
+      }
+    }
+    // else plain text... just evaluate it
+    return indirect.toString()
   }
 
   beginCondition (ident, expr) {

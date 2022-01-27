@@ -53,7 +53,7 @@ describe('Assembling documents from DOCX templates', function() {
         const compileResult = await openDocx.compileDocx(templatePath);
         const data = BradyTestData;
 
-        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), data, null, testUtil.FileNameAppend(templatePath, '-asmdata.xml'));
+        let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), data, null, templatePath + '-asmdata.xml');
         assert.equal(result.HasErrors, false);
         const validation = await templater.validateDocument({documentFile: result.Document});
         // todo: figure out how to look in the file and make sure the text is right :-)
@@ -131,7 +131,7 @@ describe('Assembling documents from DOCX templates', function() {
             nobreak:    "                  ",
         }
         let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'),
-            data, null, testUtil.FileNameAppend(templatePath, '-asmdata.xml'));
+            data, null, templatePath + '-asmdata.xml');
         assert.equal(result.HasErrors, false);
         const validation = await templater.validateDocument({documentFile: result.Document});
         assert.ok(!validation.HasErrors, validation.ErrorList);
@@ -150,7 +150,7 @@ describe('Assembling documents from DOCX templates', function() {
         const scope = Scope.pushObject(data)
         let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'),
             scope, async obj => testUtil.GetTemplatePath(obj.name),
-            testUtil.FileNameAppend(templatePath, '-asmdata.xml'));
+            templatePath + '-asmdata.xml');
         assert.equal(result.HasErrors, false);
         const validation = await templater.validateDocument({documentFile: result.Document});
         assert.ok(!validation.HasErrors, validation.ErrorList);
@@ -169,8 +169,38 @@ describe('Assembling documents from DOCX templates', function() {
         const scope = Scope.pushObject(data)
         let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'),
             scope, async obj => testUtil.GetTemplatePath(obj.name),
-            testUtil.FileNameAppend(templatePath, '-asmdata.xml'));
+            templatePath + '-asmdata.xml');
         assert.equal(result.HasErrors, false);
+        const validation = await templater.validateDocument({documentFile: result.Document});
+        assert.ok(!validation.HasErrors, validation.ErrorList);
+    })
+    it('inserttest4.docx: multiple insert of same file assembles only once', async function() {
+        const insertStub = (scope) => {
+            return new IndirectVirtual({ name: 'inserted3.docx' }, scope, 'docx')
+        }
+        insertStub.logic = true
+        const templatePath = testUtil.GetTemplatePath('inserttest4.docx');
+        const evaluator = await openDocx.compileDocx(templatePath);
+        const data = {
+            Name: "John",
+            Insert: insertStub,
+            A: true,
+            B: true,
+        }
+        const scope = Scope.pushObject(data)
+        let count = 0
+        let result = await openDocx.assembleDocx(
+            templatePath,
+            testUtil.FileNameAppend(templatePath, '-assembled'),
+            scope,
+            async obj => {
+                count++
+                return testUtil.GetTemplatePath(obj.name)
+            },
+            templatePath + '-asmdata.xml',
+        )
+        assert.equal(result.HasErrors, false);
+        assert.equal(count, 1);
         const validation = await templater.validateDocument({documentFile: result.Document});
         assert.ok(!validation.HasErrors, validation.ErrorList);
     })
@@ -203,7 +233,7 @@ describe('Assembling documents from DOCX templates', function() {
         const scope = Scope.pushObject(data)
         let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled2'),
             scope, async obj => testUtil.GetTemplatePath(obj.name),
-            testUtil.FileNameAppend(templatePath, '-asmdata2.xml'));
+            templatePath + '-asmdata2.xml');
         assert.strictEqual(result.HasErrors, false, result.Errors.join('\n'));
         // const validation = await templater.validateDocument({documentFile: result.Document});
         // assert.ok(!validation.HasErrors, validation.ErrorList);
