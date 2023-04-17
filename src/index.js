@@ -12,6 +12,32 @@ const loadTemplateModule = require('./load-template-module')
 const { docxToMarkdown, markdownToDocx } = require('./pandoc')
 const asyncPool = require('tiny-async-pool')
 
+/**
+ * Transform an OpenDocx template to produce the following reusable artifacts:
+ *   * DocxGenTemplate (a DOCX template compatible with DocxGen/OpenXmlPowerTools)
+ *   * ExtractedLogicTree (a Yatte 'template AST' containing a minimal "logic tree":
+ *     encapsulates all data and transformations that the template calls for)
+ *   * ExtractedLogic (a CommonJS module that will dynamically transform
+ *     any Yatte data context into an XML data file compatible with the above
+ *     DocxGen/OpenXmlPowerTools template)
+ *   * Preview (a markdown-format template representing a preview of the template's content)
+ *   * HasErrors (a boolean value indicating whether errors were encountered in the transformation)
+ *   * Errors (an array of strings representing error messages encountered in the transformation)
+ *
+ * Intended to be called once whenever a new template or version is put into service. The artifacts it
+ * creates on disk then remain in place and act as a cache to prevent unnecessary work, as re-creating
+ * these artifacts is relatively expensive.
+ *
+ * @param {string} templatePath the path to the OpenDocx template on the local disk
+ * @param {boolean} removeCustomProperties whether to remove any custom document properties
+ *                                         that may be embedded in the OpenDocx template itself
+ * @param {array of string} keepPropertyNames If removeCustomProperties is true, this is a list of
+ *                                            names of custom properties that should be ignored
+ *                                            through that process. Essentially, it means
+ *                                            remove all custom properties EXCEPT these.
+ * @param {boolean} cleanUpArtifacts whether interim artifacts created during the transformation process
+ *                                   should be cleaned up (the default) or left in place for diagnistic purposes
+ */
 async function compileDocx (
   templatePath,
   removeCustomProperties = true,
@@ -21,6 +47,7 @@ async function compileDocx (
   // first pre-process the given template file, which
   //    (1) leaves a unique "tag" on each field in the template, which we will use to refer to those fields later; and
   //    (2) extracts the content of each fields (in order) into a JSON file for further processing
+  // This initial step also strips out and/or leaves in the requested custom properties of the template.
   const options = {
     templateFile: templatePath,
     removeCustomProperties,
@@ -51,13 +78,14 @@ async function compileDocx (
   const rast = yatte.Engine.buildLogicTree(ast) // prunes logically insignificant nodes from ast
   fs.writeFileSync(simplifiedAstPath, JSON.stringify(rast))
   ttpl.ExtractedLogicTree = simplifiedAstPath
-  // use the simplified AST to create a JS function turns a OpenDocx data context
-  // into DocxGen XML matched to the template
+  // use the simplified AST to dynamically create CommonJS module capable of creating a DocxGen XML data file
+  // (matched to the DocxGen template) from any OpenDocx/Yatte data context
   const outputJsPath = templatePath + '.js'
   fs.writeFileSync(outputJsPath, createTemplateJsModule(rast, atoms))
   ttpl.ExtractedLogic = outputJsPath
-  // will be investingating other ways of processing the AST dynamically,
-  // so maybe we just write out the .json rather than .js at all?  Might be more secure.
+  // NOTE: we will be investingating other ways of processing the AST dynamically,
+  // so maybe we just write out the .json rather than .js/CommonJS module at all?  Might be more secure.
+  // The hangup is that the .js contains the necessary atomized expressions, and the .json does not.
   let previewResult
   try {
     previewResult = await previewPromise // make sure this is done before cleanup
@@ -147,6 +175,13 @@ async function compileDocx (
 compileDocx.version = version
 exports.compileDocx = compileDocx
 
+/**
+ * Does the minimal work to ensure that an OpenDocx template has been compiled/transformed
+ * for use with DocxGen/OpenXmlPowerTools. Performs transformations only if required artifacts
+ * do not already exist OR if they are outdated versions that no longer function correctly.
+ *
+ * @param {string} templatePath the path to the OpenDocx template on the local disk
+ */
 async function validateCompiledDocx (templatePath) {
   // templatePath should have been compiled (previously) so the expected files will be on disk
   // but if not we'll compile it now
@@ -187,6 +222,23 @@ async function validateCompiledDocx (templatePath) {
 validateCompiledDocx.version = version
 exports.validateCompiledDocx = validateCompiledDocx
 
+/**
+ * Assemble a DOCX file from an OpenDocx template and a Yatte data context. Produces a DOCX file as output.
+ *
+ * @param {string|object} template either the path to the OpenDocx template on the local disk, or an object
+ *                                 that can be resolved TO such a path by getTemplatePath().
+ *                                 Note that for optimal performance, a matching *gen.docx template should
+ *                                 already exist in the same directory, as is normally ensured by calling
+ *                                 validateCompiledDocx() whenever a template or version is put into service.
+ * @param {string} outputFile the path on disk to which the output document should be saved
+ * @param {object} data the Yatte data context on which the assembled document will be based
+ * @param {func} getTemplatePath if the provided template is anything but a simple string, this must be an
+ *                               async function capable of taking that (whatever) as input, retrieving or
+ *                               locating the template as an actual file on disk, and returning the path to that file
+ * @param {string} optionalSaveXmlFile Normally the transformed XML data file (an interim artifact of assembly) is
+ *                                     not output; however if this parameter is provided (for diagnostic purposes),
+ *                                     the interim XML data file will be saved to the provided path
+ */
 async function assembleDocx (template, outputFile, data, getTemplatePath, optionalSaveXmlFile) {
   if (typeof template !== 'string' && typeof getTemplatePath === 'function') {
     template = await getTemplatePath(template)
