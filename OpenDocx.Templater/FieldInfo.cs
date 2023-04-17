@@ -118,7 +118,8 @@ namespace OpenDocx
                 var sw = new StringBuilder();
                 sw.Append('{');
                 sw.Append("\"content\":\"");
-                sw.Append(content.Replace(@"\", @"\\").Replace(@"""", @"\"""));
+                sw.Append(content.Replace(@"\", @"\\").Replace(@"""", @"\""")
+                    .Replace("\r", String.Empty).Replace("\n", @"\\n"));
                 sw.Append("\",\"id\":\"");
                 sw.Append(id);
                 sw.Append("\"");

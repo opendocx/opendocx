@@ -64,6 +64,14 @@ describe('Producing files necessary for .NET Unit Tests to run', function() {
         const result = await openDocx.compileDocx(templatePath, true, ['UpdateFields'], false);
         assert.equal(fs.existsSync(result.ExtractedLogic), true);
     })
+    it('generates valid field JSON for MultiLineField.docx', async function() {
+        const result = await generateFilesFor('MultiLineField.docx')
+        assert.equal(fs.existsSync(result.ExtractedLogic), true);
+        // assert.doesNotThrow(() => {
+        //     const extractedFieldJson = fs.readFileSync(result.ExtractedFields, 'utf8')
+        //     const fieldList = JSON.parse(extractedFieldJson)
+        // })
+    })
 
     // expected rejections...
     it('throws error for MissingEndIfPara.docx', async function() {

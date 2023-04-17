@@ -12,6 +12,7 @@ using OpenXmlPowerTools;
 using OpenDocx;
 using Xunit;
 using System.Dynamic;
+using Newtonsoft.Json;
 
 namespace OpenDocxTemplater.Tests
 {
@@ -27,6 +28,7 @@ namespace OpenDocxTemplater.Tests
         [InlineData("acp.docx")]
         [InlineData("loandoc_example.docx")]
         [InlineData("list_punc_fmt.docx")]
+        [InlineData("MultiLineField.docx")]
         public void CompileTemplate(string name)
         {
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
@@ -38,12 +40,28 @@ namespace OpenDocxTemplater.Tests
             var extractResult = OpenDocx.FieldExtractor.ExtractFields(templateName);
             Assert.True(File.Exists(extractResult.ExtractedFields));
             Assert.True(File.Exists(extractResult.TempTemplate));
+            // check for valid JSON syntax
+            Assert.True(IsValidJsonFile(extractResult.ExtractedFields));
 
             var templater = new Templater();
             // warning... the file 'templateName + "obj.fields.json"' must have been created by node.js external to this test. (hack/race)
             var compileResult = templater.CompileTemplate(templateName, extractResult.TempTemplate, templateName + "obj.fields.json");
             Assert.False(compileResult.HasErrors);
             Assert.True(File.Exists(compileResult.DocxGenTemplate));
+        }
+
+        private Boolean IsValidJsonFile(string filePath) {
+            try {
+                string json = File.ReadAllText(filePath);
+                if (json.IndexOf('\r') >= 0) { // containing CR characters suggests bad line breaks
+                    return false;
+                }
+                var val = JsonConvert.DeserializeObject<object>(json);
+                return true;
+            }
+            catch (Exception) {
+                return false;
+            }
         }
 
         [Fact]
