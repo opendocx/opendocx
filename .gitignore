@@ -102,3 +102,6 @@ Thumbs.db
 # JetBrains
 .idea/
 _ReSharper.Caches/
+
+# dev environment
+/global.json
