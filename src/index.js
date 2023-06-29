@@ -1,3 +1,4 @@
+/* eslint-disable comma-dangle */
 'use strict'
 
 const docxTemplater = require('./docx-templater')
@@ -123,7 +124,7 @@ async function compileDocx (
     for await (const chunk of markdownStream) {
       chunks.push(chunk)
     }
-    const buffer  = Buffer.concat(chunks)
+    const buffer = Buffer.concat(chunks)
     let previewStr = buffer.toString('utf-8')
       .replace(/\r\n/g, '\n') // normalize line breaks
     if (previewStr.endsWith('\n')) {
@@ -190,15 +191,15 @@ async function validateCompiledDocx (templatePath) {
   const previewTemplate = templatePath + '.md'
   let needRegen = false
   if (!fs.existsSync(extractedLogic) || !fs.existsSync(docxGenTemplate)) {
-    console.log('Warning: compiled template not found; generating. Pre-compile to maximize performance\n    '
-      + templatePath)
+    console.log(
+      'Warning: compiled template not found; generating. Pre-compile to maximize performance\n    ' + templatePath)
     needRegen = true
   } else {
     try {
       loadTemplateModule(extractedLogic)
     } catch (e) {
-      console.log('Warning: ' + e.toString()
-        + '\nPre-compile templates when upgrading to avoid performance penalty on first use\n    ' + templatePath)
+      console.log('Warning: ' + e.toString() +
+        '\nPre-compile templates when upgrading to avoid performance penalty on first use\n    ' + templatePath)
       needRegen = true
     }
   }
