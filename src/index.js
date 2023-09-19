@@ -11,7 +11,7 @@ const Atomizer = require('./string-atomizer')
 const version = require('./version')
 const loadTemplateModule = require('./load-template-module')
 const { docxToMarkdown, markdownToDocx } = require('./pandoc')
-const asyncPool = require('tiny-async-pool')
+// const asyncPool = require('tiny-async-pool')
 
 /**
  * Transform an OpenDocx template to produce the following reusable artifacts:
@@ -66,6 +66,7 @@ async function compileDocx (
   const fieldDict = {}
   const atoms = new Atomizer()
   buildFieldDictionary(ast, fieldDict, atoms) // this also atomizes expressions in fields
+  // note: as of 2.0.0-alpha, it ALSO mutates ast, adding atom annotations for expressions
   const fieldDictPath = templatePath + 'obj.fields.json'
   fs.writeFileSync(fieldDictPath, JSON.stringify(fieldDict)) // JSON Dictionary <string fieldNum, object atomizedExpr>
   // now use the pre-processed template and the field map to create a DocxGen template
@@ -241,115 +242,117 @@ exports.validateCompiledDocx = validateCompiledDocx
  *                                     the interim XML data file will be saved to the provided path
  */
 async function assembleDocx (template, outputFile, data, getTemplatePath, optionalSaveXmlFile) {
+  // recursively create all XML and "tap out" all inserts
+  // (so by the time we get to the .NET code below, we've already gotten all the templates!)
+  const dataAssembler = await assembleData(template, data, getTemplatePath)
+  const { templateFile, xmlData, indirects, missing, errors } = dataAssembler
+  const dataSuccess = !errors || !errors.length
+  if (optionalSaveXmlFile) {
+    fs.writeFileSync(optionalSaveXmlFile, dataSuccess ? xmlData : errors.join('\n'))
+  }
+  if (!dataSuccess) {
+    return ({
+      Document: undefined,
+      Missing: Object.keys(missing),
+      Errors: errors,
+      HasErrors: true,
+    })
+  }
+  // recursively assemble inserted indirects and convert markdown to DOCX (if necessary)
+  await processIndirects(indirects, templateFile, optionalSaveXmlFile)
+  // finally assemble the main document and compose it with its inserts (if any)
+  return assembleDocxWithIndirects(templateFile, xmlData, indirects, missing, outputFile)
+}
+assembleDocx.version = version
+exports.assembleDocx = assembleDocx
+
+async function assembleData (template, data, getTemplatePath) {
   if (typeof template !== 'string' && typeof getTemplatePath === 'function') {
     template = await getTemplatePath(template)
   }
   // template should have been compiled (previously) so the expected files will be on disk
   // but if not we'll compile it now
-  let result
   const { ExtractedLogic, DocxGenTemplate } = await validateCompiledDocx(template)
   const dataAssembler = new XmlAssembler(data)
-  const xmlData = dataAssembler.assembleXml(ExtractedLogic)
-  if (dataAssembler.errors && dataAssembler.errors.length > 0) {
-    // errors were encountered while creating the XML -- don't assemble
-    if (optionalSaveXmlFile) {
-      fs.writeFileSync(optionalSaveXmlFile, dataAssembler.errors.join('\n'))
-    }
-    return ({
-      Document: undefined,
-      Missing: Object.keys(dataAssembler.missing),
-      Errors: dataAssembler.errors,
-      HasErrors: true,
-    })
-  }
-  // no error in creation of primary XML... assemble inserted indirects if there are any
-  const hasInserts = dataAssembler.indirects && dataAssembler.indirects.length > 0
-  if (hasInserts) {
-    // const destDir = path.dirname(outputFile)
-    const inserts = await asyncPool(10, dataAssembler.indirects, async indir => {
-      if ((indir.contentType === 'markdown' || indir.contentType === 'text') && indir.toString) {
-        const mdContent = indir.toString() // todo: get Missing and Errors from this (if any) and pass on below!
-        return markdownToDocx(mdContent, DocxGenTemplate)
-          .then(buffer => ({
-            Bytes: buffer,
-            Document: null,
-            Missing: [],
-            Errors: [],
-            HasErrors: false
-          }))
-      } else if (!indir.contentType || indir.contentType === 'docx') {
-        return assembleDocx(indir, null, indir.scope, getTemplatePath)
-      } else {
-        throw new Error(`Unexpected '${indir.contentType}' content type encountered during indirect processing`)
-      }
-    })
-    inserts.forEach((sub, idx) => {
-      dataAssembler.indirects[idx].result = sub
-    })
-  }
-  try {
-    if (optionalSaveXmlFile) {
-      fs.writeFileSync(optionalSaveXmlFile, xmlData)
-    }
-    // assemble "main" document
-    const mainDoc = await docxTemplater.assembleDocument({
-      templateFile: DocxGenTemplate,
-      xmlData,
-      documentFile: hasInserts ? null : outputFile,
-    })
-    const missingObj = dataAssembler.missing
-    const errors = mainDoc.HasErrors ? ['Assembly error'] : []
-    if (hasInserts) {
-      // tally errors from inserts while preparing for composition
-      const sources = [{
-        id: null,
-        buffer: mainDoc.Bytes,
-      }]
-      for (const sub of dataAssembler.indirects) {
-        if (sub.result.Missing) {
-          sub.result.Missing.forEach(m => {
-            missingObj[m] = true
-          })
-        }
-        if (sub.result.Errors) {
-          sub.result.Errors.forEach(e => {
-            errors.push(e)
-          })
-        }
-        sources.push({ id: sub.id, buffer: sub.result.Bytes })
-      }
-      if (errors.length === 0) {
-        result = await docxTemplater.composeDocument({
-          documentFile: outputFile,
-          sources,
-        })
-        result.Missing = Object.keys(missingObj)
-        result.Errors = result.HasErrors ? ['Composition error'] : errors
-      } else {
-        result = {
-          Document: undefined,
-          Missing: Object.keys(missingObj),
-          Errors: errors,
-          HasErrors: true,
+  dataAssembler.templateFile = DocxGenTemplate
+  dataAssembler.xmlData = dataAssembler.assembleXml(ExtractedLogic)
+  if (!dataAssembler.errors || !dataAssembler.errors.length) {
+    // assemble data for inserted indirects if there are any
+    if (dataAssembler.indirects && dataAssembler.indirects.length > 0) {
+      for (const indir of dataAssembler.indirects) {
+        if (!indir.contentType || indir.contentType === 'docx') {
+          indir.assembledData = await assembleData(indir, indir.scope, getTemplatePath)
         }
       }
-    } else { // no inserts
-      result = mainDoc
-      result.Missing = Object.keys(missingObj)
-      result.Errors = errors
-    }
-  } catch (e) {
-    result = {
-      Document: undefined,
-      Missing: Object.keys(dataAssembler.missing),
-      Errors: [e.message],
-      HasErrors: true,
     }
   }
+  return dataAssembler
+}
+
+async function processIndirects (indirects, parentTemplateFile, optionalSaveXmlFile) {
+  if (!indirects) return
+  for (const indir of indirects) {
+    if ((indir.contentType === 'markdown' || indir.contentType === 'text') && indir.toString) {
+      const mdContent = indir.toString() // todo: get Missing and Errors from this (if any) and pass on below!
+      const buffer = await markdownToDocx(mdContent, parentTemplateFile)
+      indir.result = {
+        Bytes: buffer,
+        Document: null,
+        Missing: [],
+        Errors: [],
+        HasErrors: false
+      }
+    } else if (!indir.contentType || indir.contentType === 'docx') {
+      // indir.assembledData was initialized by assembleData()'s recursive descent
+      const { templateFile, xmlData, indirects, missing } = indir.assembledData
+      if (optionalSaveXmlFile) {
+        fs.writeFileSync(templateFile + '_interim_data.xml', xmlData)
+      }
+      await processIndirects(indirects, templateFile, optionalSaveXmlFile)
+      indir.result = await assembleDocxWithIndirects(templateFile, xmlData, indirects, missing, null)
+      if (optionalSaveXmlFile) {
+        fs.writeFileSync(templateFile + '_interim_assembled.docx', indir.result.Bytes)
+      }
+    } else {
+      throw new Error(`Unexpected '${indir.contentType}' content type encountered during indirect processing`)
+    }
+  }
+}
+
+async function assembleDocxWithIndirects (templateFile, xmlData, indirects, missingObj, outputFile = null) {
+  // const hasInserts = indirects && indirects.length > 0
+  // try {
+  // transform indirects into OXPT DocumentComposer sources:
+  const sources = []
+  const errors = []
+  for (const sub of indirects) {
+    if (sub.result.Missing) {
+      sub.result.Missing.forEach(m => {
+        missingObj[m] = true
+      })
+    }
+    if (sub.result.Errors) {
+      sub.result.Errors.forEach(e => {
+        errors.push(e)
+      })
+    }
+    sources.push({ id: sub.id, buffer: sub.result.Bytes, keepSections: Boolean(sub.KeepSections) })
+  }
+  // assemble document (which now takes care of compositing inserts too)
+  const mainDoc = await docxTemplater.assembleDocument({
+    templateFile,
+    xmlData,
+    sources,
+    documentFile: outputFile,
+  })
+  if (mainDoc.HasErrors) {
+    errors.unshift('Assembly error')
+  }
+  const result = mainDoc
+  result.Missing = Object.keys(missingObj)
+  result.Errors = errors
   return result
 }
-assembleDocx.version = version
-exports.assembleDocx = assembleDocx
 
 const indexFields = function (fieldList, lookup = []) {
   for (const fldObj of fieldList) {
@@ -368,20 +371,23 @@ const buildFieldDictionary = function (astBody, fieldDict, atoms, parent = null)
       buildFieldDictionary(obj.contentArray, fieldDict, atoms, obj)
     }
     if (typeof obj.id !== 'undefined') {
-      // EndList fields are stored with the atomized expression of their matching List field,
-      // because this is used to make list punctuation work
-      fieldDict[obj.id] = {
-        fieldType: obj.type,
-        atomizedExpr: (
-          obj.expr
-            ? atoms.get(obj.expr)
-            : (
-              obj.type === OD.EndList
-                ? atoms.get(parent.expr)
-                : ''
-            )
-        )
+      const fieldObj = {
+        fieldType: obj.type
       }
+      if (obj.expr) {
+        fieldObj.expr = obj.expr
+        fieldObj.atomizedExpr = atoms.get(obj.expr)
+        // also capture the atomizedExpr as a notation back on the AST, for later!
+        obj.atom = fieldObj.atomizedExpr
+      } else {
+        fieldObj.parent = parent.id
+        // EndList fields are also stored with the atomized expression of their matching List field,
+        // because this is (or at least, used to be?) needed to make list punctuation work
+        if (obj.type === OD.EndList) {
+          fieldObj.atomizedExpr = atoms.get(parent.expr)
+        }
+      }
+      fieldDict[obj.id] = fieldObj
     }
   }
 }
@@ -453,6 +459,14 @@ const serializeContentArrayAsDataJs = function (contentArray, atoms, parent) {
   const sb = []
   for (const obj of contentArray) {
     sb.push(serializeAstNodeAsDataJs(obj, atoms, parent))
+  }
+  // in 2.0.0-alpha, we stopped including _punc nodes in the contentArray
+  // but the Js (insofar as we will actually use it?) still needs to capture the _punc, so synthesize it here
+  if (parent && parent.type === OD.List) {
+    var lastItem = !contentArray.length || contentArray[contentArray.length - 1]
+    if (!lastItem || lastItem.type !== OD.Content || lastItem.expr !== '_punc') {
+      sb.push(serializeAstNodeAsDataJs({ type: OD.Content, expr: '_punc' }, atoms, parent))
+    }
   }
   return sb.join('\n')
 }

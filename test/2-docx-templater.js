@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 const { describe, it } = require('mocha')
-const openDocx = require('../src/index')
+const opendocx = require('../src/index')
 const assert = require('assert')
 const fs = require('fs')
 const testUtil = require('./test-utils')
@@ -8,7 +8,7 @@ const testUtil = require('./test-utils')
 describe('Producing files necessary for .NET Unit Tests to run', function () {
   async function generateFilesFor (name) {
     const templatePath = testUtil.GetTemplateNetPath(name)
-    return await openDocx.compileDocx(templatePath, undefined, undefined, false)
+    return await opendocx.compileDocx(templatePath, undefined, undefined, false)
   }
   it('generates files for SimpleWill.docx', async function () {
     const result = await generateFilesFor('SimpleWill.docx')
@@ -60,7 +60,7 @@ describe('Producing files necessary for .NET Unit Tests to run', function () {
   })
   it('generates files for custom_props.docx', async function () {
     const templatePath = testUtil.GetTemplateNetPath('custom_props.docx')
-    const result = await openDocx.compileDocx(templatePath, true, ['UpdateFields'], false)
+    const result = await opendocx.compileDocx(templatePath, true, ['UpdateFields'], false)
     assert.strictEqual(fs.existsSync(result.ExtractedLogic), true)
   })
   it('generates valid field JSON for MultiLineField.docx', async function () {
@@ -131,4 +131,49 @@ describe('Producing files necessary for .NET Unit Tests to run', function () {
       // assert.strictEqual(fs.existsSync(result.ExtractedLogic), true)
     }, new Error('Field 223\'s Else has no matching If'))
   })
+  it('throws when compiling fieldmatch-cc-err.docx', async function () {
+    assert.rejects(async () => {
+      const result = await doTest('fieldmatch-cc-err.docx')
+    }, new Error('Field 1\'s If has no matching EndIf'))
+  })
+  it('throws when compiling fieldmatch-cc-err2.docx', async function () {
+    assert.rejects(async () => {
+      const result = await doTest('fieldmatch-cc-err2.docx')
+    }, new Error('Field 3\'s EndIf has no matching If'))
+  })
+  it('throws when compiling fieldmatch-cc-err3.docx', async function () {
+    assert.rejects(async () => {
+      const result = await doTest('fieldmatch-cc-err3.docx')
+    }, new Error('Field 1\'s If has no matching EndIf'))
+  })
+  it('throws when compiling fieldmatch-text-err.docx', async function () {
+    assert.rejects(async () => {
+      const result = await doTest('fieldmatch-text-err.docx')
+    }, new Error('Field 1\'s If has no matching EndIf'))
+  })
+  it('throws when compiling fieldmatch-text-err2.docx', async function () {
+    assert.rejects(async () => {
+      const result = await doTest('fieldmatch-text-err2.docx')
+    }, new Error('Field 3\'s EndIf has no matching If'))
+  })
+  it('throws when compiling fieldmatch-text-err3.docx', async function () {
+    assert.rejects(async () => {
+      const result = await doTest('fieldmatch-text-err3.docx')
+    }, new Error('Field 1\'s If has no matching EndIf'))
+  })
+  it('throws when compiling header-footer-cc-err.docx', async function () {
+    assert.rejects(async () => {
+      const result = await doTest('header-footer-cc-err.docx')
+    }, new Error('Field 5\'s If has no matching EndIf'))
+  })
+  it('throws when compiling header-footer-text-err.docx', async function () {
+    assert.rejects(async () => {
+      const result = await doTest('header-footer-text-err.docx')
+    }, new Error('Field 5\'s If has no matching EndIf'))
+  })
 })
+
+async function doTest (templateName) {
+  const templatePath = testUtil.GetTemplatePath(templateName)
+  await opendocx.compileDocx(templatePath, undefined, undefined, false) // suppress cleanup of interim artifacts during compilation
+}

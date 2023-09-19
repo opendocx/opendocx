@@ -1,9 +1,29 @@
-﻿using System;
+﻿/***************************************************************************
+
+Copyright (c) Lowell Stewart 2019-2023.
+Licensed under the Mozilla Public License. See LICENSE file in the project root for full license information.
+
+Published at https://github.com/opendocx/opendocx
+Developer: Lowell Stewart
+Email: lowell@opendocx.com
+
+Uses a Recursive Pure Functional Transform (RPFT) approach to process a DOCX file and extract "field" metadata.
+"Fields" may be either in regular text runs (delimited by special characters) or in content controls,
+or any mixture thereof.
+
+In the process, fields are all normalized so they are uniformly contained in content controls.
+The process produces generic JSON metadata about all fields thus located, which includes depth indicators
+so matching begin/end fields can be detected/enforced.
+
+General RPFT approach was adapted from the Open XML Power Tools project. Those parts may contain...
+  Portions Copyright (c) Microsoft. All rights reserved.
+  Portions Copyright (c) Eric White Inc. All rights reserved.
+
+***************************************************************************/
+using System;
 using System.Collections.Generic;
-using System.Dynamic;
 using System.Threading.Tasks;
 using System.IO;
-using System.Text.RegularExpressions;
 using System.Linq;
 using System.Xml.Linq;
 using OpenXmlPowerTools;
@@ -19,22 +39,32 @@ namespace OpenDocx
         public async Task<object> ExtractFieldsAsync(dynamic input)
         {
             var templateFile = (string)input.templateFile;
+            string fieldDelimiters = null;
             bool removeCustomProperties = true;
             object[] keepPropertyNames = null;
+            bool readFieldComments = false;
             var inputObj = (IDictionary<string, object>) input;
+            if (inputObj.ContainsKey("fieldDelimiters")) {
+                fieldDelimiters = (string)inputObj["fieldDelimiters"];
+            }
             if (inputObj.ContainsKey("removeCustomProperties")) {
                 removeCustomProperties = (bool) inputObj["removeCustomProperties"];
             }
             if (inputObj.ContainsKey("keepPropertyNames")) {
                 keepPropertyNames = (object[]) inputObj["keepPropertyNames"];
             }
+            if (inputObj.ContainsKey("readFieldComments")) {
+                readFieldComments = (bool) inputObj["readFieldComments"];
+            }
             await Task.Yield();
-            return ExtractFields(templateFile, removeCustomProperties, keepPropertyNames?.Select(o => (string)o));
+            return ExtractFields(templateFile, removeCustomProperties,
+                keepPropertyNames?.Select(o => (string)o), fieldDelimiters, readFieldComments);
         }
         #pragma warning restore CS1998
 
         public static FieldExtractResult ExtractFields(string templateFileName,
-            bool removeCustomProperties = true, IEnumerable<string> keepPropertyNames = null)
+            bool removeCustomProperties = true, IEnumerable<string> keepPropertyNames = null,
+            string fieldDelimiters = null, bool readFieldComments = false)
         {
             string newTemplateFileName = templateFileName + "obj.docx";
             string outputFile = templateFileName + "obj.json";
@@ -42,15 +72,26 @@ namespace OpenDocx
             WmlDocument preprocessedTemplate = null;
             byte[] byteArray = templateDoc.DocumentByteArray;
             var fieldAccumulator = new FieldAccumulator();
+            var recognizer = FieldRecognizer.Default;
+            OpenSettings openSettings = new OpenSettings();
+            if (!string.IsNullOrWhiteSpace(fieldDelimiters)) {
+                recognizer = new FieldRecognizer(fieldDelimiters, null);
+                // commented out, because this causes corruption in some templates??
+                // openSettings.MarkupCompatibilityProcessSettings =
+                //     new MarkupCompatibilityProcessSettings(
+                //         MarkupCompatibilityProcessMode.ProcessAllParts, 
+                //         DocumentFormat.OpenXml.FileFormatVersions.Office2019);
+            }
             using (MemoryStream mem = new MemoryStream())
             {
                 mem.Write(byteArray, 0, byteArray.Length); // copy template file (binary) into memory -- I guess so the template/file handle isn't held/locked?
-                using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(mem, true)) // read & parse that byte array into OXML document (also in memory)
+                using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(mem, true, openSettings)) // read & parse that byte array into OXML document (also in memory)
                 {
                     // first, remove all the task panes / web extension parts from the template (if there are any)
                     wordDoc.DeleteParts<WebExTaskpanesPart>(wordDoc.GetPartsOfType<WebExTaskpanesPart>());
                     // next, extract all fields (and thus logic) from the template's content parts
-                    ExtractAllTemplateFields(wordDoc, fieldAccumulator, removeCustomProperties, keepPropertyNames);
+                    ExtractAllTemplateFields(wordDoc, recognizer, fieldAccumulator, readFieldComments,
+                        removeCustomProperties, keepPropertyNames);
                 }
                 preprocessedTemplate = new WmlDocument(newTemplateFileName, mem.ToArray());
             }
@@ -66,16 +107,22 @@ namespace OpenDocx
             return new FieldExtractResult(newTemplateFileName, outputFile);
         }
 
-        private static void ExtractAllTemplateFields(WordprocessingDocument wordDoc, FieldAccumulator fieldAccumulator,
-            bool removeCustomProperties = true, IEnumerable<string> keepPropertyNames = null)
+        private static void ExtractAllTemplateFields(WordprocessingDocument wordDoc, FieldRecognizer recognizer,
+            FieldAccumulator fieldAccumulator, bool readFieldComments, bool removeCustomProperties = true,
+            IEnumerable<string> keepPropertyNames = null)
         {
             if (RevisionAccepter.HasTrackedRevisions(wordDoc))
                 throw new FieldParseException("Invalid template - contains tracked revisions");
 
+            CommentReader comments = null;
+            if (readFieldComments) {
+                comments = new CommentReader(wordDoc);
+            }
+
             // extract fields from each part of the document
             foreach (var part in wordDoc.ContentParts())
             {
-                ExtractFieldsFromPart(part, fieldAccumulator);
+                ExtractFieldsFromPart(part, recognizer, fieldAccumulator, comments);
 
                 if (removeCustomProperties)
                 {
@@ -119,10 +166,13 @@ namespace OpenDocx
             }
         }
 
-        private static void ExtractFieldsFromPart(OpenXmlPart part, FieldAccumulator fieldAccumulator)
+        private static void ExtractFieldsFromPart(OpenXmlPart part, FieldRecognizer recognizer,
+            FieldAccumulator fieldAccumulator, CommentReader comments)
         {
             XDocument xDoc = part.GetXDocument();
-            var xDocRoot = (XElement)IdentifyAndTransformFields(xDoc.Root, fieldAccumulator);
+            fieldAccumulator.BeginBlock();
+            var xDocRoot = (XElement)IdentifyAndNormalizeFields(xDoc.Root, recognizer, fieldAccumulator, comments);
+            fieldAccumulator.EndBlock();
             xDoc.Elements().First().ReplaceWith(xDocRoot);
             part.PutXDocument();
         }
@@ -141,7 +191,8 @@ namespace OpenDocx
             return count;
         }
 
-        private static object IdentifyAndTransformFields(XNode node, FieldAccumulator fieldAccumulator)
+        private static object IdentifyAndNormalizeFields(XNode node, FieldRecognizer recognizer,
+            FieldAccumulator fieldAccumulator, CommentReader comments)
         {
             XElement element = node as XElement;
             if (element != null)
@@ -157,7 +208,7 @@ namespace OpenDocx
                             .Select(t => (string)t)
                             .StringConcatenate()
                             .CleanUpInvalidCharacters();
-                        if (FieldRecognizer.IsField(ccContents, out ccContents))
+                        if (recognizer.IsField(ccContents, out ccContents))
                         {
                             //var isBlockLevel = element.Element(W.sdtContent).Elements(W.p).FirstOrDefault() != null;
                             var newCC = new XElement(element.Name, element.Attributes());
@@ -173,6 +224,17 @@ namespace OpenDocx
                                 tagElem = new XElement(W.tag);
                                 props.Add(tagElem);
                             }
+                            if (comments != null) {
+                                var commentRef = element.Descendants(W.commentReference).FirstOrDefault();
+                                if (commentRef != null) {
+                                    var idAttr = commentRef.Attribute(W.id)?.Value;
+                                    if (idAttr != null && comments.TryGetValue(idAttr, out var comment)) {
+                                        if (!string.IsNullOrEmpty(comment)) {
+                                            ccContents += "@@@COMMENT@@@" + comment;
+                                        }
+                                    }
+                                }
+                            }
                             var fieldId = fieldAccumulator.AddField(ccContents);
                             tagElem.SetAttributeValue(W.val, fieldId);
                             newCC.Add(element.Nodes());
@@ -180,81 +242,84 @@ namespace OpenDocx
                         }
                         return new XElement(element.Name,
                             element.Attributes(),
-                            element.Nodes().Select(n => IdentifyAndTransformFields(n, fieldAccumulator)));
+                            element.Nodes().Select(n => IdentifyAndNormalizeFields(n, recognizer, fieldAccumulator, comments)));
                     }
                     return new XElement(element.Name,
                         element.Attributes(),
-                        element.Nodes().Select(n => IdentifyAndTransformFields(n, fieldAccumulator)));
+                        element.Nodes().Select(n => IdentifyAndNormalizeFields(n, recognizer, fieldAccumulator, comments)));
                 }
-                if (element.Name == W.p)
-                {
-                    fieldAccumulator.BeginBlock();
+                if (element.Name == W.p) {
                     var paraContents = element
                         .DescendantsTrimmed(W.txbxContent)
                         .Where(e => e.Name == W.t)
                         .Select(t => (string)t)
                         .StringConcatenate()
                         .Trim();
-                    int occurances = CountSubstring(FieldRecognizer.EmbedBegin, paraContents);
-                    if (occurances == 1
-                        && paraContents.StartsWith(FieldRecognizer.EmbedBegin + FieldRecognizer.FieldBegin)
-                        && paraContents.EndsWith(FieldRecognizer.FieldEnd + FieldRecognizer.EmbedEnd))
-                    {
-                        var content = paraContents
-                            .Substring(FieldRecognizer.EmbedBegin.Length,
-                                       paraContents.Length - FieldRecognizer.EmbedBegin.Length - FieldRecognizer.EmbedEnd.Length)
-                            .Trim();
-                        if (FieldRecognizer.IsField(content, out content))
-                        {
-                            var fieldId = fieldAccumulator.AddField(content);
-                            fieldAccumulator.EndBlock();
-                            var ppr = element.Elements(W.pPr).FirstOrDefault();
-                            var rpr = (ppr != null) ? ppr.Elements(W.rPr).FirstOrDefault() : null;
-                            XElement r = new XElement(W.r, rpr,
-                                new XElement(W.t, FieldRecognizer.FieldBegin + content + FieldRecognizer.FieldEnd));
-                            return new XElement(element.Name,
-                                element.Attributes(),
-                                element.Elements(W.pPr),
-                                CCTWrap(fieldId, r)
-                            );
-                        }
-                        // else fall through to (slower) case
-                    }
-                    if (paraContents.Contains(FieldRecognizer.EmbedBegin + FieldRecognizer.FieldBegin))
-                    {
-                        fieldAccumulator.RegisterNonFieldContentInBlock();
+                    // single-field-in-paragraph optimization commented out while re-working logic below.
+                    // TODO: is it worthwhile to adapt this?
+                    // int occurances = string.IsNullOrEmpty(recognizer.EmbedBegin)
+                    //     ? CountSubstring(recognizer.FieldBegin, paraContents)
+                    //     : CountSubstring(recognizer.EmbedBegin, paraContents);
+                    // if (occurances == 1
+                    //     && paraContents.StartsWith(recognizer.CombinedBegin)
+                    //     && paraContents.EndsWith(recognizer.CombinedEnd))
+                    // {
+                    //     var content = paraContents
+                    //         .Substring(recognizer.EmbedBeginLength,
+                    //                    paraContents.Length - recognizer.EmbedDelimLength)
+                    //         .Trim();
+                    //     if (recognizer.IsField(content, out content))
+                    //     {
+                    //         fieldAccumulator.BeginBlock();
+                    //         var fieldId = fieldAccumulator.AddField(content);
+                    //         fieldAccumulator.EndBlock();
+                    //         var ppr = element.Elements(W.pPr).FirstOrDefault();
+                    //         var rpr = (ppr != null) ? ppr.Elements(W.rPr).FirstOrDefault() : null;
+                    //         XElement r = new XElement(W.r, rpr,
+                    //             new XElement(W.t, '[' + content + ']'));
+                    //         return new XElement(element.Name,
+                    //             element.Attributes(),
+                    //             element.Elements(W.pPr),
+                    //             CCTWrap(fieldId, r)
+                    //         );
+                    //     }
+                    //     // else fall through to (slower) case
+                    // }
+                    if (paraContents.Contains(recognizer.CombinedBegin)) {
+                        // paragraph appears to contain at least one text-delimited field
                         var runReplacementInfo = new List<XElement>();
                         var placeholderText = Guid.NewGuid().ToString();
-                        var r = new Regex(
-                                Regex.Escape(FieldRecognizer.EmbedBegin)
-                                + "\\s*"
-                                + Regex.Escape(FieldRecognizer.FieldBegin)
-                                + ".*?"
-                                + Regex.Escape(FieldRecognizer.FieldEnd)
-                                + "\\s*"
-                                + Regex.Escape(FieldRecognizer.EmbedEnd));
+                        var r = recognizer.Regex;
+                        // replace every text-delimited field in this paragraph with the same GUID, AND place the
+                        // corresponding field content (embedded in a content control) into runReplacementInfo for now.
+                        // (OpenXmlRegex does not support replacing with arbitary elements, only a single text run!)
                         var replacedCount = OpenXmlRegex.Replace(new[] { element }, r, placeholderText, (para, match) =>
                         {
                             var matchString = match.Value.Trim().Replace("\u0001",""); // unrecognized codes/elements returned as \u0001; strip these
                             var content = matchString.Substring(
-                                    FieldRecognizer.EmbedBegin.Length,
-                                    matchString.Length - FieldRecognizer.EmbedBegin.Length - FieldRecognizer.EmbedEnd.Length
-                                ).CleanUpInvalidCharacters();
-                            if (FieldRecognizer.IsField(content, out content))
+                                    recognizer.EmbedBeginLength,
+                                    matchString.Length - recognizer.EmbedDelimLength)
+                                .CleanUpInvalidCharacters();
+                            if (recognizer.IsField(content, out content))
                             {
+                                // var fieldId = fieldAccumulator.AddField(content); // unnecessary -- see below
+                                // (after text-based field is wrapped in content control here, logic below
+                                // re-processes and enumerates the now-wrapped fields! But I have to wonder,
+                                // is that re-processing necessary or just a leftover from some old hack?)
                                 runReplacementInfo.Add(CCWrap(new XElement(W.r, new XElement(W.t,
-                                    FieldRecognizer.FieldBegin + content + FieldRecognizer.FieldEnd))));
+                                    '[' + content + ']'))));
                                 return true;
                             }
                             return false;
                         }, false);
-                        if (replacedCount > 0)
-                        {
+                        if (replacedCount > 0) {
+                            // text-delimited fields were replaced by a GUID.
+                            // Now plug in the actual content control elements in the place of the GUIDs.
                             var newPara = new XElement(element);
                             foreach (var elem in runReplacementInfo)
                             {
                                 var runToReplace = newPara.Descendants(W.r).FirstOrDefault(rn => rn.Value == placeholderText
-                                                                                                 && rn.Parent.Name != Templater.OD.Content);
+                                                                                                 && rn.Parent.Name != OD.Content);
                                 if (runToReplace == null)
                                     throw new InvalidOperationException("Internal error");
                                 else
@@ -269,25 +334,37 @@ namespace OpenDocx
                                 }
                             }
                             var coalescedParagraph = WordprocessingMLUtil.CoalesceAdjacentRunsWithIdenticalFormatting(newPara);
-                            var transformedContent = IdentifyAndTransformFields(coalescedParagraph, fieldAccumulator);
+                            // now all the paragraph's text-delimited fields should have been normalized...
+                            // re-process with default recognizer
+                            fieldAccumulator.BeginBlock();
+                            var transformedContent = IdentifyAndNormalizeFields(
+                                coalescedParagraph, FieldRecognizer.Default, fieldAccumulator, comments);
                             fieldAccumulator.EndBlock();
                             return transformedContent;
                         }
                     }
-                    var transformedParaContent = element.Nodes().Select(n => IdentifyAndTransformFields(n, fieldAccumulator)).ToArray();
+                    // the paragraph did not contain any text-delimited fields, but we must still process
+                    // its content because it may have content control-based fields!
+                    fieldAccumulator.BeginBlock();
+                    var transformedParaContent = element.Nodes()
+                        .Select(n => IdentifyAndNormalizeFields(n, FieldRecognizer.Default, fieldAccumulator, comments))
+                        .ToArray();
                     fieldAccumulator.EndBlock();
                     return new XElement(element.Name, element.Attributes(), transformedParaContent);
                 }
-                if (element.Name == W.lastRenderedPageBreak)
-                {
+                else if (element.Name == W.lastRenderedPageBreak) {
                     // documents assembled from templates will almost always change pagination, so remove Word's pagination hints
                     // (also because they're not handled cleanly by OXPT)
                     return null;
                 }
+                else if (element.Name == W.r) {
+                    // we should not get here on any run INSIDE a field
+                    fieldAccumulator.RegisterNonFieldContentInBlock();
+                }
 
                 return new XElement(element.Name,
                     element.Attributes(),
-                    element.Nodes().Select(n => IdentifyAndTransformFields(n, fieldAccumulator)));
+                    element.Nodes().Select(n => IdentifyAndNormalizeFields(n, recognizer, fieldAccumulator, comments)));
             }
             return node;
         }

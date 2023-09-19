@@ -11,8 +11,8 @@
     <PackageReference Include="Microsoft.CodeAnalysis" Version="2.10.0" />
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
     <PackageReference Include="Microsoft.DotNet.InternalAbstractions" Version="1.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="2.1.0" />
-    <PackageReference Include="OpenXmlPowerTools-Net6" Version="4.6.24-alpha1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="7.0.0" />
+    <PackageReference Include="OpenXmlPowerTools-Net6" Version="4.6.24-beta5" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="EdgeJs">

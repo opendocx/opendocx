@@ -45,14 +45,6 @@ exports.assembleDocument = util.promisify(
   })
 )
 
-exports.composeDocument = util.promisify(
-  edge.func({
-    assemblyFile: baseDll,
-    typeName: 'OpenDocx.Composer',
-    methodName: 'ComposeDocumentAsync'
-  })
-)
-
 exports.validateDocument = util.promisify(
   edge.func({
     assemblyFile: baseDll,

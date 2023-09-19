@@ -2,22 +2,29 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
 using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Validation;
 using OpenXmlPowerTools;
 using OpenDocx;
 using Xunit;
+using Xunit.Abstractions;
 using System.Dynamic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace OpenDocxTemplater.Tests
 {
     public class Tests
     {
+        private readonly ITestOutputHelper output;
+
+        public Tests(ITestOutputHelper output)
+        {
+            this.output = output;
+        }
+
         [Theory]
         [InlineData("SimpleWill.docx")]
         [InlineData("Lists.docx")]
@@ -159,7 +166,7 @@ namespace OpenDocxTemplater.Tests
         [InlineData("Married RLT Plain.docx")]
         [InlineData("text_field_formatting.docx")]
         [InlineData("kMANT.docx")]
-        public void FieldExtractor(string name)
+        public FieldExtractResult FieldExtractor(string name)
         {
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
             FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
@@ -170,13 +177,56 @@ namespace OpenDocxTemplater.Tests
             var extractResult = OpenDocx.FieldExtractor.ExtractFields(templateName);
             Assert.True(File.Exists(extractResult.ExtractedFields));
             Assert.True(File.Exists(extractResult.TempTemplate));
+            return extractResult;
         }
 
+        [Fact]
+        public void RenderedPageBreakMasksDelimiters()
+        {
+            var extractResult = FieldExtractor("rend_page_break_in_delim.docx");
+            // now read extract field JSON
+            string json = File.ReadAllText(extractResult.ExtractedFields);
+            var val = JsonConvert.DeserializeObject<JArray>(json);
+            // (Past failure was: a "last rendered page break" in the Word markup, situated between the closing
+            // ] and } of a field delimiter situated just at a page break, prevented the field extractor from
+            // recognizing the field, leading to errors in processing/compiling the template.)
+            var allFields = FlattenFields(val).ToArray();
+            Assert.Equal(5, allFields.Length);
+            // Make sure no recognized "fields" contain supposed field delimiters!
+            foreach (JObject obj in allFields) {
+                Assert.DoesNotContain("{[", (string)obj["contnt"]);
+                Assert.DoesNotContain("]}", (string)obj["contnt"]);
+            }
+        }
+
+        // [Theory]
+        // [InlineData("Married RLT Plain.docx")]
+        // [InlineData("text_field_formatting.docx")]
+        // [InlineData("kMANT.docx")]
+        // public async void FieldExtractorAsync(string name)
+        // {
+        //     DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
+        //     FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+        //     DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
+        //     FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, name));
+        //     string templateName = outputDocx.FullName;
+        //     templateDocx.CopyTo(templateName, true);
+        //     dynamic options = new ExpandoObject();
+        //     options.templateFile = templateName;
+        //     options.removeCustomProperties = true;
+        //     options.keepPropertyNames = new object[] { "UpdateFields" };
+        //     var od = new OpenDocx.FieldExtractor();
+        //     var extractResult = await od.ExtractFieldsAsync(options);
+        //     Assert.True(File.Exists(extractResult.ExtractedFields));
+        //     Assert.True(File.Exists(extractResult.TempTemplate));
+        // }
+
         [Theory]
-        [InlineData("Married RLT Plain.docx")]
-        [InlineData("text_field_formatting.docx")]
-        [InlineData("kMANT.docx")]
-        public async void FieldExtractorAsync(string name)
+        [InlineData("HDLetter_Summary.docx", "«»")]
+        // [InlineData("HDSingleTrust.docx", "«»")] // WAY too slow - eliminating test case because it kills test perf
+        [InlineData("HDTrust_RLT.docx", "«»")]
+        [InlineData("HDSimple.docx", "«»")]
+        public async void FieldExtractorAltSyntaxAsync(string name, string delims)
         {
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
             FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
@@ -186,12 +236,41 @@ namespace OpenDocxTemplater.Tests
             templateDocx.CopyTo(templateName, true);
             dynamic options = new ExpandoObject();
             options.templateFile = templateName;
+            options.fieldDelimiters = delims;
             options.removeCustomProperties = true;
-            options.keepPropertyNames = new object[] { "UpdateFields" };
             var od = new OpenDocx.FieldExtractor();
             var extractResult = await od.ExtractFieldsAsync(options);
-            Assert.True(File.Exists(extractResult.ExtractedFields));
-            Assert.True(File.Exists(extractResult.TempTemplate));
+            // now read extract field JSON
+            string json = File.ReadAllText(extractResult.ExtractedFields);
+            var val = JsonConvert.DeserializeObject<JArray>(json);
+            // sub in field number tokens to test replacement for CCRemover
+            var fieldMap = new FieldReplacementIndex();
+            foreach (JObject obj in FlattenFields(val)) {
+                var oid = (string)obj["id"]; 
+                fieldMap[oid] = new FieldReplacement("=:" + oid + ":=");
+            }
+            // transform to Preview template
+            string previewPath = templateName + "ncc.docx";
+            var errors = TemplateTransformer.TransformTemplate(extractResult.TempTemplate,
+                previewPath, TemplateFormat.PreviewDocx, fieldMap);
+            Assert.True(File.Exists(previewPath));
+
+            // also try a rudimentary map from alternate syntax to OpenDocx-ish field content (preparing for transform)
+            var fieldMap2 = new FieldReplacementIndex();
+            foreach (JObject obj in FlattenFields(val)) {
+                var oid = (string)obj["id"]; 
+                var oldContent = (string)obj["content"];
+                fieldMap2[oid] = new FieldReplacement(MockMapFieldContent(oldContent), oldContent);
+            }
+            // test transform to OpenDocx Source template
+            string destinationTemplatePath = templateName + "trans.docx";
+            errors = TemplateTransformer.TransformTemplate(extractResult.TempTemplate,
+                destinationTemplatePath, TemplateFormat.TextFieldSourceDocx, fieldMap2,
+                "HotDocs", "HD");
+            Assert.True(File.Exists(destinationTemplatePath));
+            // var odv = new OpenDocx.Validator();
+            // var vr = odv.ValidateDocument(destinationTemplatePath);
+            // Assert.False(vr.HasErrors, vr.ErrorList);
         }
 
         [Theory]
@@ -215,55 +294,49 @@ namespace OpenDocxTemplater.Tests
             Assert.False(result.HasErrors, result.ErrorList);
         }
 
-        [Fact]
-        public void XmlError()
+        private string GetTestTemplate(string name)
         {
-            string name = "xmlerror.docx";
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
-            FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
-            FileInfo dataXml = new FileInfo(Path.Combine(sourceDir.FullName, "xmlerror.xml"));
-            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
-            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, name));
-            string templateName = outputDocx.FullName;
-            string resultName = Path.Combine(destDir.FullName, "xmlerror-assembled.docx");
-            templateDocx.CopyTo(templateName, true);
-            var assembler = new OpenDocx.Assembler();
-            AssembleResult assembleResult;
-            using (var xmlData = new StreamReader(dataXml.FullName, System.Text.Encoding.UTF8)) {
-                assembleResult = assembler.AssembleDocument(templateName, xmlData, resultName);
-            }
-            Assert.True(File.Exists(assembleResult.Document));
+            FileInfo sourceTemplateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+            DirectoryInfo testDir = new DirectoryInfo("../../../../test/history/dot-net-results");
+            FileInfo testTemplateDocx = new FileInfo(Path.Combine(testDir.FullName, sourceTemplateDocx.Name));
+            string templateName = testTemplateDocx.FullName;
+            sourceTemplateDocx.CopyTo(templateName, true);
+            return templateName;
         }
 
-        private AssembleResult AsmDoc(string name, string data, string outName)
+        private XElement GetTestXmlData(string data)
         {
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
-            FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
             FileInfo dataXml = new FileInfo(Path.Combine(sourceDir.FullName, data));
-            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
-            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, templateDocx.Name));
-            string templateName = outputDocx.FullName;
-            string resultName = string.IsNullOrEmpty(outName) ? null : Path.Combine(destDir.FullName, outName);
-            templateDocx.CopyTo(templateName, true);
-            var assembler = new OpenDocx.Assembler();
-            AssembleResult assembleResult;
-            using (var xmlData = new StreamReader(dataXml.FullName, System.Text.Encoding.UTF8)) {
-                assembleResult = assembler.AssembleDocument(templateName, xmlData, resultName);
-            }
-            Assert.False(assembleResult.HasErrors);
-            return assembleResult;
+            return XElement.Load(dataXml.FullName);
         }
+
+        private string GetTestOutput(string outName)
+        {
+            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
+            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, outName));
+            return outputDocx.FullName;
+        }
+
 
         [Theory]
         [InlineData("SimpleWillC.docx", "SimpleWillC.xml", "SimpleWillC-assembled.docx")]
-        public void AssembleDocument(string name, string data, string outName)
+        [InlineData("xmlerror.docx", "xmlerror.xml", "xmlerror-assembled.docx")]
+        public async Task AssembleDocument(string name, string data, string outName)
         {
-            var assembleResult = AsmDoc(name, data, outName);
+            var assembler = new OpenDocx.Assembler();
+            var assembleResult = await assembler.AssembleDocAsync(
+                GetTestTemplate(name),
+                GetTestXmlData(data),
+                GetTestOutput(outName),
+                null);
             Assert.True(File.Exists(assembleResult.Document));
         }
 
         [Theory]
         [InlineData("SimpleWill.docx")]
+        [InlineData("loandoc_example.docx")]
         public void FlattenTemplate(string name)
         {
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
@@ -281,71 +354,26 @@ namespace OpenDocxTemplater.Tests
             Assert.True(File.Exists(compileResult.DocxGenTemplate));
         }
 
-        [Fact]
-        public void ComposeDocument()
+        [Theory]
+        [InlineData("inserttestc.docx", "insertedc.docx", false, "inserttestc.xml", "inserttestc-composed.docx")]
+        [InlineData("inserttestd.docx", "insertedc.docx", false, "inserttestc.xml", "inserttestd-composed.docx")]
+        [InlineData("insertteste.docx", "insertede.docx", false, "inserttestc.xml", "insertteste-composed.docx")]
+        [InlineData("insertteste.docx", "insertedf.docx", false, "inserttestc.xml", "inserttestf-composed.docx")]
+        [InlineData("DC-Main2SectInsIndirect.docx", "DC-MarginConditional.docx", true, "InsertKeepSectionsTest.xml", "insertkeepsections-composed.docx")]
+        public async Task ComposeDocument(string name, string insert, bool keepsections, string data, string outName)
         {
-            var result1 = AsmDoc("inserttestc.docx", "inserttestc.xml", null);
-            var result2 = AsmDoc("insertedc.docx", "inserttestc.xml", null);
-            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
-            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, "inserttestc-composed.docx"));
-            var composer = new OpenDocx.Composer();
+            var mainData = GetTestXmlData(data);
+            var assembler = new OpenDocx.Assembler();
             List<Source> sources = new List<Source>()
-                {
-                    new Source(new WmlDocument(new OpenXmlPowerToolsDocument(result1.Bytes)), true),
-                    new Source(new WmlDocument(new OpenXmlPowerToolsDocument(result2.Bytes)), "inserted"),
-                };
-            var result3 = composer.ComposeDocument(outputDocx.FullName, sources);
-            Assert.True(File.Exists(result3.Document));
-        }
-
-        [Fact]
-        public void ComposeDocument2()
-        {
-            var result1 = AsmDoc("inserttestd.docx", "inserttestc.xml", null);
-            var result2 = AsmDoc("insertedc.docx", "inserttestc.xml", null);
-            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
-            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, "inserttestd-composed.docx"));
-            var composer = new OpenDocx.Composer();
-            List<Source> sources = new List<Source>()
-                {
-                    new Source(new WmlDocument(new OpenXmlPowerToolsDocument(result1.Bytes)), true),
-                    new Source(new WmlDocument(new OpenXmlPowerToolsDocument(result2.Bytes)), "inserted"),
-                };
-            var result3 = composer.ComposeDocument(outputDocx.FullName, sources);
-            Assert.True(File.Exists(result3.Document));
-        }
-
-        [Fact]
-        public void ComposeDocument3()
-        {
-            var result1 = AsmDoc("insertteste.docx", "inserttestc.xml", null);
-            var result2 = AsmDoc("insertede.docx", "inserttestc.xml", null);
-            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
-            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, "insertteste-composed.docx"));
-            var composer = new OpenDocx.Composer();
-            List<Source> sources = new List<Source>()
-                {
-                    new Source(new WmlDocument(new OpenXmlPowerToolsDocument(result1.Bytes)), true),
-                    new Source(new WmlDocument(new OpenXmlPowerToolsDocument(result2.Bytes)), "inserted"),
-                };
-            var result3 = composer.ComposeDocument(outputDocx.FullName, sources);
-            Assert.True(File.Exists(result3.Document));
-        }
-
-        [Fact]
-        public void ComposeDocument4()
-        {
-            var result1 = AsmDoc("insertteste.docx", "inserttestc.xml", null);
-            var result2 = AsmDoc("insertedf.docx", "inserttestc.xml", null);
-            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
-            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, "inserttestf-composed.docx"));
-            var composer = new OpenDocx.Composer();
-            List<Source> sources = new List<Source>()
-                {
-                    new Source(new WmlDocument(new OpenXmlPowerToolsDocument(result1.Bytes)), true),
-                    new Source(new WmlDocument(new OpenXmlPowerToolsDocument(result2.Bytes)), "inserted"),
-                };
-            var result3 = composer.ComposeDocument(outputDocx.FullName, sources);
+            {
+                new TemplateSource(GetTestTemplate(insert), mainData, "inserted"),
+            };
+            sources[0].KeepSections = keepsections;
+            var result3 = await assembler.AssembleDocAsync(
+                GetTestTemplate(name),
+                mainData,
+                GetTestOutput(outName),
+                sources);
             Assert.True(File.Exists(result3.Document));
         }
 
@@ -401,5 +429,35 @@ namespace OpenDocxTemplater.Tests
         //    Assert.True(File.Exists(extractResult.TempTemplate));
         //}
 
+        internal IEnumerable<JToken> FlattenFields(JToken item) {
+            if (item.Type == JTokenType.Array) {
+                foreach (var element in item) {
+                    foreach (var subElement in FlattenFields(element)) {
+                        yield return subElement;
+                    }
+                }
+            } else {
+                yield return item;
+            }
+        }
+
+        internal string MockMapFieldContent(string content) {
+            if (content.StartsWith("IF "))
+                return "if " + content.Substring(3);
+            if (content.StartsWith("ELSE IF "))
+                return "elseif " + content.Substring(8);
+            if (content.StartsWith("ELSE"))
+                return "else";
+            if (content.StartsWith("END IF"))
+                return "endif";
+            if (content.StartsWith("REPEAT "))
+                return "list " + content.Substring(7);
+            if (content.StartsWith("END REPEAT"))
+                return "endlist";
+            if (content.StartsWith("INSERT "))
+                return content.Substring(7);
+            // else assume merge field
+            return content;
+        }
     }
 }

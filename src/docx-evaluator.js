@@ -79,16 +79,18 @@ class XmlAssembler {
   indirectSub (indirect) {
     if (indirect.contentType !== 'text') { // docx, markdown, etc... substitute special placeholder
       // see if this indirect has already been encountered/added
-      const existing = this.indirects.find(ex => Object.keys(indirect).every(propName => (
+      let existing = this.indirects.find(ex => Object.keys(indirect).every(propName => (
         indirect[propName] === ex[propName]
       )))
-      if (existing) {
-        return `{INSERT{${existing.id}}}`
-      } else {
-        const newIndirect = { ...indirect, id: uuidv4() }
-        this.indirects.push(newIndirect)
-        return `{INSERT{${newIndirect.id}}}`
+      if (!existing) {
+        existing = { ...indirect, id: uuidv4() }
+        this.indirects.push(existing)
       }
+      let uri = `oxpt://DocumentAssembler/insert/${existing.id}`
+      if (indirect.KeepSections) {
+        uri += '?KeepSections=true'
+      }
+      return uri
     }
     // else plain text... just evaluate it
     return indirect.toString()
