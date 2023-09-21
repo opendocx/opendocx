@@ -676,7 +676,8 @@ namespace OpenDocx
                 {
                     var endText = "<" + PA.EndConditional + "/>";
                     XElement endElem = new XElement(W.r, new XElement(W.t, endText));
-                    bool blockLevel = element.IsEmpty || (element.Descendants(W.p).FirstOrDefault() != null);
+                    bool blockLevel = (element.IsEmpty && (element.Ancestors(W.p).FirstOrDefault() == null))
+                        || (element.Descendants(W.p).FirstOrDefault() != null);
                     if (element.Name == OD.If)
                     {
                         var selector = fieldMap[element.Attribute(OD.Id).Value].ToString().Substring(2).Trim() + "2";

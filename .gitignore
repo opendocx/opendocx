@@ -7,6 +7,9 @@
 *.js.bak
 *.cs.bak
 test/history/*
+
+# temp files
+test/temp/*
 test/templates/Engagement*
 test/templates/FullEngagementLetter.docx
 

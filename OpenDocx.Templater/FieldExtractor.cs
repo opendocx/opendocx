@@ -359,7 +359,13 @@ namespace OpenDocx
                 }
                 else if (element.Name == W.r) {
                     // we should not get here on any run INSIDE a field
-                    fieldAccumulator.RegisterNonFieldContentInBlock();
+                    var textInRun = element.Elements(W.t).Select(t => (string)t).StringConcatenate().Trim();
+                    if (textInRun != "")
+                    {
+                        // apparently, spaces and non-text outside of a field will (in at least some cases?)
+                        // get ignored in assembly, even for block-level if's, so we only note non-spaces.
+                        fieldAccumulator.RegisterNonFieldContentInBlock();
+                    }
                 }
 
                 return new XElement(element.Name,

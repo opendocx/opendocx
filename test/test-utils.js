@@ -10,7 +10,7 @@ exports.FileNameAppend = function(pathToFile, stringToAppend) {
 }
 
 exports.GetTemplatePath = function(testTemplateName) {
-    const templatePath = path.join(testOutputDir, testTemplateName);
+    const templatePath = path.join(testOutputDir, path.basename(testTemplateName));
     if (!fs.existsSync(templatePath)) {
         fs.copyFileSync(path.join(__dirname, 'templates', testTemplateName), templatePath);
     }
