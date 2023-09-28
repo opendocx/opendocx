@@ -37,6 +37,8 @@ namespace OpenDocxTemplater.Tests
         [InlineData("list_punc_fmt.docx")]
         [InlineData("MultiLineField.docx")]
         [InlineData("simple-short.docx")]
+        [InlineData("StrayCC.docx")]
+        [InlineData("NestedFieldWeird.docx")]
         public void CompileTemplate(string name)
         {
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");

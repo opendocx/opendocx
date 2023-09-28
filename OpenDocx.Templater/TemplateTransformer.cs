@@ -146,12 +146,13 @@ namespace OpenDocx
                     var alias = (string)element.Elements(W.sdtPr).Elements(W.alias).Attributes(W.val).FirstOrDefault();
                     if (string.IsNullOrEmpty(alias)) {
                         var tag = (string)element.Elements(W.sdtPr).Elements(W.tag).Attributes(W.val).FirstOrDefault();
-                        if (!string.IsNullOrEmpty(tag)) {
+                        int tagVal = 0;
+                        if (!string.IsNullOrEmpty(tag) && int.TryParse(tag, out tagVal)) {
                             var fieldContent = element.Elements(W.sdtContent);
                             var childPara = fieldContent.Elements(W.p).FirstOrDefault();
                             var pProps = childPara?.Elements(W.pPr).FirstOrDefault();
                             var firstRun = fieldContent.Descendants(W.r).FirstOrDefault();
-                            var runProps = firstRun.Elements(W.rPr).FirstOrDefault();
+                            var runProps = firstRun?.Elements(W.rPr).FirstOrDefault();
                             if (destinationFormat == TemplateFormat.PreviewDocx) {
                                 // replace field content with flattened + delimited field IDs so they will be ignored by
                                 // subsequent conversion from DOCX to Markdown (after which field content will be swapped back in)
