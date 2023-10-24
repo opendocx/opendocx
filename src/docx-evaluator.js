@@ -52,7 +52,7 @@ class XmlAssembler {
     let value = frame.evaluate(evaluator) // we need to make sure this is memoized to avoid unnecessary re-evaluation
     if (value === null || typeof value === 'undefined') {
       this.missing[expr] = true
-      value = '[' + expr + ']' // missing value placeholder
+      value = this.missingValuePlaceholder(expr, evaluator.ast)
     } else if (typeof value === 'object') {
       if (value instanceof IndirectVirtual) {
         value = this.indirectSub(value)
@@ -124,6 +124,13 @@ class XmlAssembler {
   endList () {
     this.xmlStack.popList()
     this.contextStack = Scope.pop(this.contextStack)
+  }
+
+  missingValuePlaceholder (expr, ast) {
+    if (ast && ast.type === Engine.AST.AngularFilterExpression) {
+      return this.missingValuePlaceholder(Engine.serializeAST(ast.input))
+    }
+    return '[' + expr + ']'
   }
 }
 module.exports = XmlAssembler

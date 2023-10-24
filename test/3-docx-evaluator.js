@@ -20,7 +20,7 @@ describe('Generating XML data for DOCX templates (white box)', function () {
       jsFile = result.ExtractedLogic
     }
     const str = new XmlAssembler({}).assembleXml(jsFile)
-    assert.strictEqual(str, '<?xml version="1.0"?><_odx><a>[Testator.Name]</a><b>[Testator.City]</b><c>[Testator.County]</c><d>[Testator.State]</d><e>[Representative.Name]</e><f>[Representative.City]</f><g>[Representative.County]</g><h>[Representative.State]</h><i>[Representative.Gender.HeShe]</i><n2>false</n2><v></v><w>[GoverningLaw]</w><x>[SigningDate|format:&quot;Do [day of] MMMM, YYYY&quot;]</x><y>[Testator.Gender.HimHer]</y><z>[Testator.Gender.HisHer]</z><A>[Witness1Name]</A><B>[Witness2Name]</B><C>[GoverningLaw|upper]</C><D>[NotaryCounty|upper]</D></_odx>')
+    assert.strictEqual(str, '<?xml version="1.0"?><_odx><a>[Testator.Name]</a><b>[Testator.City]</b><c>[Testator.County]</c><d>[Testator.State]</d><e>[Representative.Name]</e><f>[Representative.City]</f><g>[Representative.County]</g><h>[Representative.State]</h><i>[Representative.Gender.HeShe]</i><n2>false</n2><v></v><w>[GoverningLaw]</w><x>[SigningDate]</x><y>[Testator.Gender.HimHer]</y><z>[Testator.Gender.HisHer]</z><A>[Witness1Name]</A><B>[Witness2Name]</B><C>[GoverningLaw]</C><D>[NotaryCounty]</D></_odx>')
   })
   it('auto-generated js function should execute against its contextHelper with a populated context', async function () {
     const templatePath = testUtil.GetTemplatePath('SimpleWill.docx')
@@ -103,7 +103,7 @@ describe('Generating XML data for DOCX templates (white box)', function () {
     const str = new XmlAssembler(data).assembleXml(jsFile)
     fs.writeFileSync(templatePath + '.unans.asmdata.xml', str)
     assert.strictEqual(str,
-      '<?xml version="1.0"?><_odx><a>[Testator.Name]</a><b>[Testator.City]</b><c>[Testator.County]</c><d>[Testator.State]</d><e>[Representative.Name]</e><f>[Representative.City]</f><g>[Representative.County]</g><h>[Representative.State]</h><i>[Representative.Gender.HeShe]</i><n2>false</n2><v></v><w>Utah</w><x>26th day of April, 2019</x><y>[Testator.Gender.HimHer]</y><z>[Testator.Gender.HisHer]</z><B></B><C>UTAH</C><D>[NotaryCounty|upper]</D><E></E><F>[WitnessNames[0]]</F><H></H></_odx>')
+      '<?xml version="1.0"?><_odx><a>[Testator.Name]</a><b>[Testator.City]</b><c>[Testator.County]</c><d>[Testator.State]</d><e>[Representative.Name]</e><f>[Representative.City]</f><g>[Representative.County]</g><h>[Representative.State]</h><i>[Representative.Gender.HeShe]</i><n2>false</n2><v></v><w>Utah</w><x>26th day of April, 2019</x><y>[Testator.Gender.HimHer]</y><z>[Testator.Gender.HisHer]</z><B></B><C>UTAH</C><D>[NotaryCounty]</D><E></E><F>[WitnessNames[0]]</F><H></H></_odx>')
 
     // let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), data)
     // assert.strictEqual(result.HasErrors, false)
