@@ -4,19 +4,19 @@ const TestNestLogicTree = [
   {
     type: 'If',
     expr: 'x',
-    atom: 'o',
+    atom: 'C1',
     id: '1',
     contentArray: [
       {
         type: 'List',
         expr: '[]',
-        atom: 'b',
+        atom: 'L2',
         id: '2',
         contentArray: [
           {
             type: 'Content',
             expr: 'test',
-            atom: 'a',
+            atom: 'C3',
             id: '3',
           },
         ]
@@ -24,37 +24,37 @@ const TestNestLogicTree = [
       {
         type: 'ElseIf',
         expr: 'y',
-        atom: 'n',
+        atom: 'C5',
         id: '5',
         contentArray: [
           {
             type: 'Content',
             expr: 'A',
-            atom: 'c',
+            atom: 'C6',
             id: '6',
           },
           {
             type: 'List',
             expr: 'outer',
-            atom: 'h',
+            atom: 'L7',
             id: '7',
             contentArray: [
               {
                 type: 'Content',
                 expr: 'z?B:B2',
-                atom: 'd',
+                atom: 'C8',
                 id: '8',
               },
               {
                 type: 'List',
                 expr: 'inner',
-                atom: 'f',
+                atom: 'L9',
                 id: '9',
                 contentArray: [
                   {
                     type: 'Content',
                     expr: 'C',
-                    atom: 'e',
+                    atom: 'C10',
                     id: '10',
                   },
                 ]
@@ -62,7 +62,7 @@ const TestNestLogicTree = [
               {
                 type: 'Content',
                 expr: 'D',
-                atom: 'g',
+                atom: 'C12',
                 id: '12',
               },
             ]
@@ -70,7 +70,7 @@ const TestNestLogicTree = [
           {
             type: 'Content',
             expr: 'E',
-            atom: 'i',
+            atom: 'C14',
             id: '14',
           },
           {
@@ -80,19 +80,19 @@ const TestNestLogicTree = [
               {
                 type: 'Content',
                 expr: 'F',
-                atom: 'j',
+                atom: 'C16',
                 id: '16',
               },
               {
                 type: 'List',
                 expr: 'another',
-                atom: 'l',
+                atom: 'L17',
                 id: '17',
                 contentArray: [
                   {
                     type: 'Content',
                     expr: 'G',
-                    atom: 'k',
+                    atom: 'C18',
                     id: '18',
                   },
                 ]
@@ -100,7 +100,7 @@ const TestNestLogicTree = [
               {
                 type: 'Content',
                 expr: 'H',
-                atom: 'm',
+                atom: 'C20',
                 id: '20',
               },
             ]

@@ -4,12 +4,12 @@ const redundant_if_logic_tree = [
   {
     type: 'If',
     expr: 'x',
-    atom: 'b',
+    atom: 'C1',
     id: '1',
     contentArray: [{
       type: 'Content',
       expr: 'adjective',
-      atom: 'a',
+      atom: 'C2',
       id: '2',
     }, {
       type: 'Else',
@@ -19,12 +19,12 @@ const redundant_if_logic_tree = [
   }, {
     type: 'Content',
     expr: 'name',
-    atom: 'c',
+    atom: 'C5',
     id: '5',
   }, {
     type: 'If',
     expr: 'x',
-    atom: 'b',
+    atom: 'C1',
     id: '6',
     contentArray: [{
       type: 'Else',

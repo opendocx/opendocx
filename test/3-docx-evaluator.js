@@ -20,7 +20,7 @@ describe('Generating XML data for DOCX templates (white box)', function () {
       jsFile = result.ExtractedLogic
     }
     const str = new XmlAssembler({}).assembleXml(jsFile)
-    assert.strictEqual(str, '<?xml version="1.0"?><_odx><a>[Testator.Name]</a><b>[Testator.City]</b><c>[Testator.County]</c><d>[Testator.State]</d><e>[Representative.Name]</e><f>[Representative.City]</f><g>[Representative.County]</g><h>[Representative.State]</h><i>[Representative.Gender.HeShe]</i><n2>false</n2><v></v><w>[GoverningLaw]</w><x>[SigningDate]</x><y>[Testator.Gender.HimHer]</y><z>[Testator.Gender.HisHer]</z><A>[Witness1Name]</A><B>[Witness2Name]</B><C>[GoverningLaw]</C><D>[NotaryCounty]</D></_odx>')
+    assert.strictEqual(str, '<?xml version="1.0"?><_odx><C1>[Testator.Name]</C1><C3>[Testator.City]</C3><C4>[Testator.County]</C4><C5>[Testator.State]</C5><C6>[Representative.Name]</C6><C7>[Representative.City]</C7><C8>[Representative.County]</C8><C9>[Representative.State]</C9><C10>[Representative.Gender.HeShe]</C10><C12b>false</C12b><L18></L18><C27>[GoverningLaw]</C27><C29>[SigningDate]</C29><C33>[Testator.Gender.HimHer]</C33><C34>[Testator.Gender.HisHer]</C34><C37>[Witness1Name]</C37><C38>[Witness2Name]</C38><C39>[GoverningLaw]</C39><C40>[NotaryCounty]</C40></_odx>')
   })
   it('auto-generated js function should execute against its contextHelper with a populated context', async function () {
     const templatePath = testUtil.GetTemplatePath('SimpleWill.docx')
@@ -38,7 +38,7 @@ describe('Generating XML data for DOCX templates (white box)', function () {
     const str = new XmlAssembler(data).assembleXml(jsFile)
     fs.writeFileSync(templatePath + '.asmdata.xml', str)
     assert.strictEqual(str,
-      '<?xml version="1.0"?><_odx><a>John Smith</a><b>Jonestown</b><c>Lebanon</c><d>Pennsylvania</d><e>Kim Johnston</e><f>Philadelphia</f><g>Philadelphia</g><h>Pennsylvania</h><i>she</i><n2>true</n2><j>Tina Turner</j><k>Los Angeles</k><l>Los Angeles</l><m>California</m><v><v0><o>1</o><p>st</p><q>Kelly Smith</q><r>1234 Anystreet, Allentown, PA</r><s>Daughter</s><t>5555</t><u>My cat.</u><v1/></v0><v0><o>2</o><p>nd</p><q>John Smith Jr.</q><r>54321 Geronimo, Jonestown, PA</r><s>Son</s><t>4444</t><u>My house.</u><v1/></v0><v0><o>3</o><p>rd</p><q>Diane Kennedy</q><r>Unknown</r><s>Mistress</s><t>[SSNLast4]</t><u>My misguided affection.</u><v1/></v0><v0><o>4</o><p>th</p><q>Tim Billingsly</q><r>Boulder, CO</r><s>cat</s><t>[SSNLast4]</t><u>Everything else.</u><v1/></v0></v><w>Pennsylvania</w><x>10th day of March, 2019</x><y>him</y><z>his</z><A>John Doe</A><B>Marilyn Monroe</B><C>PENNSYLVANIA</C><D>ALLEGHENY</D></_odx>')
+      '<?xml version="1.0"?><_odx><C1>John Smith</C1><C3>Jonestown</C3><C4>Lebanon</C4><C5>Pennsylvania</C5><C6>Kim Johnston</C6><C7>Philadelphia</C7><C8>Philadelphia</C8><C9>Pennsylvania</C9><C10>she</C10><C12b>true</C12b><C13>Tina Turner</C13><C14>Los Angeles</C14><C15>Los Angeles</C15><C16>California</C16><L18><L18i><C19>1</C19><C20>st</C20><C21>Kelly Smith</C21><C22>1234 Anystreet, Allentown, PA</C22><C23>Daughter</C23><C24>5555</C24><C25>My cat.</C25><L18p/></L18i><L18i><C19>2</C19><C20>nd</C20><C21>John Smith Jr.</C21><C22>54321 Geronimo, Jonestown, PA</C22><C23>Son</C23><C24>4444</C24><C25>My house.</C25><L18p/></L18i><L18i><C19>3</C19><C20>rd</C20><C21>Diane Kennedy</C21><C22>Unknown</C22><C23>Mistress</C23><C24>[SSNLast4]</C24><C25>My misguided affection.</C25><L18p/></L18i><L18i><C19>4</C19><C20>th</C20><C21>Tim Billingsly</C21><C22>Boulder, CO</C22><C23>cat</C23><C24>[SSNLast4]</C24><C25>Everything else.</C25><L18p/></L18i></L18><C27>Pennsylvania</C27><C29>10th day of March, 2019</C29><C33>him</C33><C34>his</C34><C37>John Doe</C37><C38>Marilyn Monroe</C38><C39>PENNSYLVANIA</C39><C40>ALLEGHENY</C40></_odx>')
   })
   it('js function should not contain multiple definitions for the same data value', async function () {
     const templatePath = testUtil.GetTemplatePath('redundant_ifs.docx')
@@ -54,8 +54,7 @@ describe('Generating XML data for DOCX templates (white box)', function () {
     // now evaluate the helper against this data context, to test its functionality
     const str = new XmlAssembler(data).assembleXml(jsFile)
     fs.writeFileSync(templatePath + '.asmdata.xml', str)
-    assert.strictEqual(str,
-      '<?xml version="1.0"?><_odx><a2>true</a2><b2>false</b2></_odx>')
+    assert.strictEqual(str, '<?xml version="1.0"?><_odx><C1b>true</C1b><C5b>false</C5b></_odx>')
   })
   it('xml should include TF answers for content fields separate from if fields', async function () {
     const templatePath = testUtil.GetTemplatePath('Syntax.docx')
@@ -71,8 +70,7 @@ describe('Generating XML data for DOCX templates (white box)', function () {
     // now evaluate the helper against this data context, to test its functionality
     const str = new XmlAssembler(data).assembleXml(jsFile)
     fs.writeFileSync(templatePath + '.asmdata.xml', str)
-    assert.strictEqual(str,
-      '<?xml version="1.0"?><_odx><a>false</a><a2>false</a2></_odx>')
+    assert.strictEqual(str, '<?xml version="1.0"?><_odx><C1>false</C1><C1b>false</C1b></_odx>')
   })
   it('list testing', async function () {
     const templatePath = testUtil.GetTemplatePath('Lists.docx')
@@ -87,7 +85,7 @@ describe('Generating XML data for DOCX templates (white box)', function () {
     // note: lists do not (currently) get optimized in the XML -- every time a template repeats through a list, another copy of the list is stored in the XML. This is because I haven't done the work yet to optimize that part.
     // it works well enough this way, but in the future (if the XML chunks are so big they're slowing something down) we can optimize it better.
     assert.strictEqual(str,
-      '<?xml version="1.0"?><_odx><b><b0><a>Greg</a><b1>, </b1></b0><b0><a>Marcia</a><b1>, </b1></b0><b0><a>Peter</a><b1>, </b1></b0><b0><a>Jan</a><b1>, </b1></b0><b0><a>Bobby</a><b1> and </b1></b0><b0><a>Cindy</a><b1/></b0></b><d><d0><a>Greg</a><c>09/30/1954</c><d1>;</d1></d0><d0><a>Marcia</a><c>08/05/1956</c><d1>;</d1></d0><d0><a>Peter</a><c>11/07/1957</c><d1>;</d1></d0><d0><a>Jan</a><c>04/29/1958</c><d1>;</d1></d0><d0><a>Bobby</a><c>12/19/1960</c><d1>; and</d1></d0><d0><a>Cindy</a><c>08/14/1961</c><d1>.</d1></d0></d></_odx>')
+      '<?xml version="1.0"?><_odx><L1><L1i><C2>Greg</C2><L1p>, </L1p></L1i><L1i><C2>Marcia</C2><L1p>, </L1p></L1i><L1i><C2>Peter</C2><L1p>, </L1p></L1i><L1i><C2>Jan</C2><L1p>, </L1p></L1i><L1i><C2>Bobby</C2><L1p> and </L1p></L1i><L1i><C2>Cindy</C2><L1p/></L1i></L1><L4><L4i><C2>Greg</C2><C6>09/30/1954</C6><L4p>;</L4p></L4i><L4i><C2>Marcia</C2><C6>08/05/1956</C6><L4p>;</L4p></L4i><L4i><C2>Peter</C2><C6>11/07/1957</C6><L4p>;</L4p></L4i><L4i><C2>Jan</C2><C6>04/29/1958</C6><L4p>;</L4p></L4i><L4i><C2>Bobby</C2><C6>12/19/1960</C6><L4p>; and</L4p></L4i><L4i><C2>Cindy</C2><C6>08/14/1961</C6><L4p>.</L4p></L4i></L4></_odx>')
   })
   it('should assemble data XML that includes unanswered placeholders', async function () {
     const templatePath = testUtil.GetTemplatePath('SimpleWill2.docx')
@@ -103,7 +101,7 @@ describe('Generating XML data for DOCX templates (white box)', function () {
     const str = new XmlAssembler(data).assembleXml(jsFile)
     fs.writeFileSync(templatePath + '.unans.asmdata.xml', str)
     assert.strictEqual(str,
-      '<?xml version="1.0"?><_odx><a>[Testator.Name]</a><b>[Testator.City]</b><c>[Testator.County]</c><d>[Testator.State]</d><e>[Representative.Name]</e><f>[Representative.City]</f><g>[Representative.County]</g><h>[Representative.State]</h><i>[Representative.Gender.HeShe]</i><n2>false</n2><v></v><w>Utah</w><x>26th day of April, 2019</x><y>[Testator.Gender.HimHer]</y><z>[Testator.Gender.HisHer]</z><B></B><C>UTAH</C><D>[NotaryCounty]</D><E></E><F>[WitnessNames[0]]</F><H></H></_odx>')
+      '<?xml version="1.0"?><_odx><C1>[Testator.Name]</C1><C3>[Testator.City]</C3><C4>[Testator.County]</C4><C5>[Testator.State]</C5><C6>[Representative.Name]</C6><C7>[Representative.City]</C7><C8>[Representative.County]</C8><C9>[Representative.State]</C9><C10>[Representative.Gender.HeShe]</C10><C12b>false</C12b><L18></L18><C27>Utah</C27><C29>26th day of April, 2019</C29><C33>[Testator.Gender.HimHer]</C33><C34>[Testator.Gender.HisHer]</C34><L37></L37><C41>UTAH</C41><C42>[NotaryCounty]</C42><L44></L44><C49>[WitnessNames[0]]</C49><L50></L50></_odx>')
 
     // let result = await openDocx.assembleDocx(templatePath, testUtil.FileNameAppend(templatePath, '-assembled'), data)
     // assert.strictEqual(result.HasErrors, false)
@@ -122,8 +120,7 @@ describe('Generating XML data for DOCX templates (white box)', function () {
     }
     // now evaluate the helper against this data context, to test its functionality
     const str = new XmlAssembler(data).assembleXml(jsFile)
-    assert.strictEqual(str,
-      '<?xml version="1.0"?><_odx><b2>true</b2><a>testing</a></_odx>')
+    assert.strictEqual(str, '<?xml version="1.0"?><_odx><C1b>true</C1b><C2>testing</C2></_odx>')
     fs.writeFileSync(templatePath + '.asmdata.xml', str)
     const asmResult = openDocx.assembleDocx(templatePath, templatePath + '-assembled.docx', data)
     assert(!asmResult.HasErrors)
@@ -140,15 +137,13 @@ describe('Generating XML data for DOCX templates (white box)', function () {
     }
     // now evaluate the helper against this data context, to test its functionality
     let str = new XmlAssembler(data).assembleXml(jsFile)
-    assert.strictEqual(str,
-      '<?xml version="1.0"?><_odx><a2>true</a2><a>testing</a></_odx>')
+    assert.strictEqual(str, '<?xml version="1.0"?><_odx><C2b>true</C2b><C2>testing</C2></_odx>')
     fs.writeFileSync(templatePath + '.asmdata1.xml', str)
     let asmResult = openDocx.assembleDocx(templatePath, templatePath + '-assembled1.docx', data)
     assert(!asmResult.HasErrors)
     // now evaluate the helper against NO data context, to test its functionality
     str = new XmlAssembler({}).assembleXml(jsFile)
-    assert.strictEqual(str,
-      '<?xml version="1.0"?><_odx><a2>false</a2></_odx>')
+    assert.strictEqual(str, '<?xml version="1.0"?><_odx><C2b>false</C2b></_odx>')
     fs.writeFileSync(templatePath + '.asmdata2.xml', str)
     asmResult = openDocx.assembleDocx(templatePath, templatePath + '-assembled2.docx', {})
     assert(!asmResult.HasErrors)
@@ -161,15 +156,13 @@ describe('Generating XML data for DOCX templates (white box)', function () {
     // const compiledTemplate = result.DocxGenTemplate
     const data = { ClientName: 'John Doe', DPOAType: new String('Contingent') } // eslint-disable-line
     let str = new XmlAssembler(data).assembleXml(jsFile)
-    assert.strictEqual(str,
-      '<?xml version="1.0"?><_odx><a>John Doe</a><c2>true</c2><b2>false</b2></_odx>')
+    assert.strictEqual(str, '<?xml version="1.0"?><_odx><C1>John Doe</C1><C3b>true</C3b><C4b>false</C4b></_odx>')
     fs.writeFileSync(templatePath + '.asmdata1.xml', str)
     let asmResult = openDocx.assembleDocx(templatePath, templatePath + '-assembled1.docx', data)
     assert(!asmResult.HasErrors)
     // now evaluate the helper against NO data context, to test its functionality
     str = new XmlAssembler({}).assembleXml(jsFile)
-    assert.strictEqual(str,
-      '<?xml version="1.0"?><_odx><a>[ClientName]</a><c2>false</c2><b2>false</b2></_odx>')
+    assert.strictEqual(str, '<?xml version="1.0"?><_odx><C1>[ClientName]</C1><C3b>false</C3b><C4b>false</C4b></_odx>')
     fs.writeFileSync(templatePath + '.asmdata2.xml', str)
     asmResult = openDocx.assembleDocx(templatePath, templatePath + '-assembled2.docx', {})
     assert(!asmResult.HasErrors)
@@ -189,7 +182,7 @@ describe('Generating XML data for DOCX templates (white box)', function () {
       ]
     }
     let str = new XmlAssembler(data).assembleXml(jsFile)
-    const expectedXml = '<?xml version="1.0"?><_odx><b><b0><a>Joe Bloggs</a><b1/></b0></b><c><c0><a>Bob Syuruncle</a><c1/></c0><c0><a>Joe Blow</a><c1/></c0></c><e2>true</e2><d>Astruas Bob</d></_odx>'
+    const expectedXml = '<?xml version="1.0"?><_odx><L1><L1i><C2>Joe Bloggs</C2><L1p/></L1i></L1><L4><L4i><C2>Bob Syuruncle</C2><L4p/></L4i><L4i><C2>Joe Blow</C2><L4p/></L4i></L4><C7b>true</C7b><C8>Astruas Bob</C8></_odx>'
     assert.strictEqual(str, expectedXml)
     fs.writeFileSync(templatePath + '.asmdata1.xml', str)
     let asmResult = openDocx.assembleDocx(templatePath, templatePath + '-assembled1.docx', data)

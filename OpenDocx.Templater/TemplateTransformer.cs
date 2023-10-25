@@ -24,6 +24,7 @@ using System.Xml.Linq;
 using OpenXmlPowerTools;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
+using System.Diagnostics;
 
 namespace OpenDocx
 {
@@ -603,6 +604,42 @@ namespace OpenDocx
 
         static XElement PWrap(params object[] content) => new XElement(W.p, content);
 
+        private enum FC {
+            Content,
+            Conditional,
+            List,
+            ListPunctuation
+        };
+
+        private static string GetSelector(FC context, string fieldId, FieldReplacementIndex fieldMap)
+        {
+            var baseContent = fieldMap[fieldId].ToString();
+            if (context != FC.Content) { // trim field type keyword off beginning of the content
+                var spc = baseContent.IndexOf(' ');
+                Debug.Assert(spc == 2 || spc == 4 || spc == 6); // if, list/else, elseif
+                baseContent = baseContent.Substring(spc).Trim();
+            }
+            switch (context) {
+                case FC.Content:
+                    // "./whatever" (alone) may return a single item OR it may return
+                    // an array containing a single item. In either situation, we just want
+                    // the item itself, not the array! So we append [1] to be explicit:
+                    return "./" + baseContent + "[1]";
+                case FC.List:
+                    // "./whatever[1]" returns the list itself; instead select all the
+                    // individual items WITHIN the list:
+                    return "./" + baseContent + "[1]/" + baseContent + "i"; // with old atomizer, used to be + "0";
+                case FC.ListPunctuation:
+                    // punctuation content elements always carry the fieldId of the list with which they are associated,
+                    // so baseContent is now the atom associated with the list. Append a "p" for punctuation.
+                    return "./" + baseContent + "p"; // with old atomizer, used to be + "1";
+                case FC.Conditional:
+                    // add "b" suffix because the value is being checked explicitly as a Boolean
+                    return baseContent + "b[1]"; // with old atomizer, used to be + "2[1]"
+            }
+            throw new ArgumentException("Unhandled field context", "context");
+        }
+
         static object ContentReplacementTransform(XNode node, FieldReplacementIndex fieldMap, TemplateErrorList templateError)
         {
             XElement element = node as XElement;
@@ -610,18 +647,10 @@ namespace OpenDocx
             {
                 if (element.Name == OD.Content)
                 {
-                    string selector;
-                    if (element.Attribute(OD.Punc) == null) { // regular content field
-                        var contentAtom = fieldMap[element.Attribute(OD.Id).Value].ToString();
-                        selector = "./" + contentAtom + "[1]"; // ./contentAtom (alone) may return a single item
-                        // OR it may return an array containing a single item. In either case, we just want
-                        // the item itself, not the array! So we append [1].
-                    }
-                    else { // has Attribute OD.Punc, which means it's a special list punctuation field.
-                        // extract the list atom, and query where that list's punctuation will be in the XML.
-                        var listAtom = fieldMap[element.Attribute(OD.Id).Value].ToString().Substring(4).Trim();
-                        selector = "./" + listAtom + "1";
-                    }
+                    var selector = GetSelector(
+                        element.Attribute(OD.Punc) == null ? FC.Content : FC.ListPunctuation,
+                        element.Attribute(OD.Id).Value,
+                        fieldMap);
                     var fieldText = "<" + PA.Content + " "
                         + PA.Select + "=\"" + selector + "\" "
                         + PA.Optional + "=\"true\"/>";
@@ -645,8 +674,7 @@ namespace OpenDocx
                 }
                 if (element.Name == OD.List)
                 {
-                    var listAtom = fieldMap[element.Attribute(OD.Id).Value].ToString().Substring(4).Trim();
-                    var selector = "./" + listAtom + "[1]/" + listAtom + "0";
+                    var selector = GetSelector(FC.List, element.Attribute(OD.Id).Value, fieldMap);
                     var startText = "<" + PA.Repeat + " "
                         + PA.Select + "=\"" + selector + "\" "
                         + PA.Optional + "=\"true\"/>";
@@ -681,9 +709,9 @@ namespace OpenDocx
                         || (element.Descendants(W.p).FirstOrDefault() != null);
                     if (element.Name == OD.If)
                     {
-                        var selector = fieldMap[element.Attribute(OD.Id).Value].ToString().Substring(2).Trim() + "2";
+                        var selector = GetSelector(FC.Conditional, element.Attribute(OD.Id).Value, fieldMap);
                         var startText = "<" + PA.Conditional + " "
-                            + PA.Select + "=\"" + selector + "[1]\" "
+                            + PA.Select + "=\"" + selector + "\" "
                             + PA.Match + "=\"true\"/>";
                         var content = element
                             .Elements()
@@ -709,15 +737,13 @@ namespace OpenDocx
                         XElement lookUp = element.Parent;
                         while (lookUp.Name != OD.If && lookUp.Name != OD.ElseIf)
                             lookUp = lookUp.Parent;
-                        var selector = fieldMap[lookUp.Attribute(OD.Id).Value].ToString()
-                            .Substring(lookUp.Name.LocalName.Length).Trim() + "2";
+                        var selector = GetSelector(FC.Conditional, lookUp.Attribute(OD.Id).Value, fieldMap);
                         var startElseText = "<" + PA.Conditional + " "
-                            + PA.Select + "=\"" + selector + "[1]\" "
+                            + PA.Select + "=\"" + selector + "\" "
                             + PA.NotMatch + "=\"true\"/>"; // NotMatch instead of Match, represents "Else" branch
-                        selector = fieldMap[element.Attribute(OD.Id).Value].ToString()
-                            .Substring(6).Trim() + "2";
+                        selector = GetSelector(FC.Conditional, element.Attribute(OD.Id).Value, fieldMap);
                         var nestedIfText = "<" + PA.Conditional + " "
-                            + PA.Select + "=\"" + selector + "[1]\" "
+                            + PA.Select + "=\"" + selector + "\" "
                             + PA.Match + "=\"true\"/>";
                         var content = element
                             .Elements()
@@ -752,10 +778,9 @@ namespace OpenDocx
                         // if lookUp == null, Something is wrong -- else not inside an if?
                         if (lookUp != null)
                         {
-                            var selector = fieldMap[lookUp.Attribute(OD.Id).Value].ToString()
-                                .Substring(lookUp.Name.LocalName.Length).Trim() + "2";
+                            var selector = GetSelector(FC.Conditional, lookUp.Attribute(OD.Id).Value, fieldMap);
                             var startElseText = "<" + PA.Conditional + " "
-                                + PA.Select + "=\"" + selector + "[1]\" "
+                                + PA.Select + "=\"" + selector + "\" "
                                 + PA.NotMatch + "=\"true\"/>"; // NotMatch instead of Match, represents "Else" branch
 
                             var content = element

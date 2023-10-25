@@ -110,7 +110,7 @@ class XmlDataBuilder {
       case 'object':
         return this.serializeObject(value)
       case 'array':
-        return value.map(item => this.serializeElement(ident + '0', item)).join('')
+        return value.map(item => this.serializeElement(ident + 'i', item)).join('')
     }
   }
 

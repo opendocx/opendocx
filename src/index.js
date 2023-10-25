@@ -7,7 +7,7 @@ const yatte = require('yatte')
 const fs = require('fs')
 // const { Transform } = require('stream')
 const OD = yatte.FieldTypes
-const Atomizer = require('./string-atomizer')
+const Atomizer = require('./field-expr-namer')
 const version = require('./version')
 const loadTemplateModule = require('./load-template-module')
 const { docxToMarkdown, markdownToDocx } = require('./pandoc')
@@ -83,7 +83,7 @@ async function compileDocx (
   // use the simplified AST to dynamically create CommonJS module capable of creating a DocxGen XML data file
   // (matched to the DocxGen template) from any OpenDocx/Yatte data context
   const outputJsPath = templatePath + '.js'
-  fs.writeFileSync(outputJsPath, createTemplateJsModule(rast, atoms))
+  fs.writeFileSync(outputJsPath, createTemplateJsModule(rast))
   ttpl.ExtractedLogic = outputJsPath
   // NOTE: we will be investingating other ways of processing the AST dynamically,
   // so maybe we just write out the .json rather than .js/CommonJS module at all?  Might be more secure.
@@ -376,15 +376,15 @@ const buildFieldDictionary = function (astBody, fieldDict, atoms, parent = null)
       }
       if (obj.expr) {
         fieldObj.expr = obj.expr
-        fieldObj.atomizedExpr = atoms.get(obj.expr)
-        // also capture the atomizedExpr as a notation back on the AST, for later!
+        fieldObj.atomizedExpr = atoms.getFieldAtom(obj)
+        // also cross-pollinate atomizedExpr across to ast (for later use)
         obj.atom = fieldObj.atomizedExpr
       } else {
         fieldObj.parent = parent.id
         // EndList fields are also stored with the atomized expression of their matching List field,
         // because this is (or at least, used to be?) needed to make list punctuation work
         if (obj.type === OD.EndList) {
-          fieldObj.atomizedExpr = atoms.get(parent.expr)
+          fieldObj.atomizedExpr = atoms.getFieldAtom(parent)
         }
       }
       fieldDict[obj.id] = fieldObj
@@ -392,33 +392,33 @@ const buildFieldDictionary = function (astBody, fieldDict, atoms, parent = null)
   }
 }
 
-const createTemplateJsModule = function (ast, atoms) {
+const createTemplateJsModule = function (ast) {
   const sb = ["'use strict';"]
   sb.push(`exports.version='${version}';`)
   sb.push('exports.evaluate=function(cx,cl,h)')
-  sb.push(serializeContextInDataJs(ast, '_odx', 'cx', 'cl', atoms, null))
+  sb.push(serializeContextInDataJs(ast, '_odx', 'cx', 'cl', null))
   return sb.join('\n')
 }
 
-const serializeContextInDataJs = function (contentArray, id, objIdent, locIdent, atoms, parentNode) {
+const serializeContextInDataJs = function (contentArray, id, objIdent, locIdent, parentNode) {
   return `{
 h.beginObject('${id}',${objIdent}${locIdent ? (',' + locIdent) : ''});
-${serializeContentArrayAsDataJs(contentArray, atoms, parentNode)}
+${serializeContentArrayAsDataJs(contentArray, parentNode)}
 h.endObject()
 }`
 }
 
-const serializeAstNodeAsDataJs = function (astNode, atoms, parent) {
+const serializeAstNodeAsDataJs = function (astNode, parent) {
   let atom
   if (astNode.expr) {
     if (astNode.expr === '_punc') {
       // special case: list punctuation: use a customized "atom" derived from the list expression
-      atom = atoms.get(parent.expr) + '1'
+      atom = parent.atom + 'p'
     } else if (astNode.type === OD.If || astNode.type === OD.ElseIf) {
       // special case: evaluating an expression for purposes of determining its truthiness rather than its actual value
-      atom = atoms.get(astNode.expr) + '2'
+      atom = astNode.atom + 'b'
     } else { // regular case: atom based on expression
-      atom = atoms.get(astNode.expr)
+      atom = astNode.atom
     }
   }
   switch (astNode.type) {
@@ -426,28 +426,28 @@ const serializeAstNodeAsDataJs = function (astNode, atoms, parent) {
       return `h.define('${atom}','${escapeExpressionStr(astNode.expr)}');`
 
     case OD.List: {
-      const a0 = atom + '0' // special atom representing individual items in the list, rather than the entire list
+      const a0 = atom + 'i' // special atom representing individual items in the list, rather than the entire list
       return `for(const ${a0} of h.beginList('${atom}', '${escapeExpressionStr(astNode.expr)}'))
-${serializeContextInDataJs(astNode.contentArray, a0, a0, '', atoms, astNode)}
+${serializeContextInDataJs(astNode.contentArray, a0, a0, '', astNode)}
 h.endList();`
     }
 
     case OD.If:
       return `if(h.beginCondition('${atom}','${escapeExpressionStr(astNode.expr)}'))
 {
-${serializeContentArrayAsDataJs(astNode.contentArray, atoms, astNode)}
+${serializeContentArrayAsDataJs(astNode.contentArray, astNode)}
 }`
 
     case OD.ElseIf:
       return `} else {
 if(h.beginCondition('${atom}','${escapeExpressionStr(astNode.expr)}'))
 {
-${serializeContentArrayAsDataJs(astNode.contentArray, atoms, astNode)}
+${serializeContentArrayAsDataJs(astNode.contentArray, astNode)}
 }`
 
     case OD.Else:
       return `} else {
-${serializeContentArrayAsDataJs(astNode.contentArray, atoms, astNode)}
+${serializeContentArrayAsDataJs(astNode.contentArray, astNode)}
 `
 
     default:
@@ -455,17 +455,17 @@ ${serializeContentArrayAsDataJs(astNode.contentArray, atoms, astNode)}
   }
 }
 
-const serializeContentArrayAsDataJs = function (contentArray, atoms, parent) {
+const serializeContentArrayAsDataJs = function (contentArray, parent) {
   const sb = []
   for (const obj of contentArray) {
-    sb.push(serializeAstNodeAsDataJs(obj, atoms, parent))
+    sb.push(serializeAstNodeAsDataJs(obj, parent))
   }
   // in 2.0.0-alpha, we stopped including _punc nodes in the contentArray
   // but the Js (insofar as we will actually use it?) still needs to capture the _punc, so synthesize it here
   if (parent && parent.type === OD.List) {
     var lastItem = !contentArray.length || contentArray[contentArray.length - 1]
     if (!lastItem || lastItem.type !== OD.Content || lastItem.expr !== '_punc') {
-      sb.push(serializeAstNodeAsDataJs({ type: OD.Content, expr: '_punc' }, atoms, parent))
+      sb.push(serializeAstNodeAsDataJs({ type: OD.Content, expr: '_punc' }, parent))
     }
   }
   return sb.join('\n')
