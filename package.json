@@ -1,6 +1,6 @@
 {
   "name": "opendocx-node",
-  "version": "2.0.0-beta.3",
+  "version": "2.0.0-beta.4",
   "description": "OpenDocx document assembly for Node.js",
   "main": "src/index.js",
   "scripts": {
@@ -39,7 +39,7 @@
     "tiny-async-pool": "^1.2.0",
     "util": "^0.11.1",
     "uuid": "^3.3.3",
-    "yatte": "^2.0.0-beta.3"
+    "yatte": "^2.0.0-beta.4"
   },
   "devDependencies": {
     "eslint": "^6.8.0",
