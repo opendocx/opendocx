@@ -57,7 +57,10 @@ async function compileDocx (
   const result = await docxTemplater.extractFields(options)
   options.originalTemplateFile = templatePath
   options.templateFile = result.TempTemplate
-  const previewPromise = docxTemplater.flattenFields(options)
+  let previewPromise
+  if (!process.env.DISABLE_PANDOC || process.env.DISABLE_PANDOC === 'FALSE' || process.env.DISABLE_PANDOC === '0') {
+    previewPromise = docxTemplater.flattenFields(options)
+  }
   const fieldList = JSON.parse(fs.readFileSync(result.ExtractedFields, 'utf8'))
   const fieldLookup = indexFields(fieldList)
   // use the yatte engine to parse all the fields, creating an AST for the template
@@ -89,62 +92,66 @@ async function compileDocx (
   // so maybe we just write out the .json rather than .js/CommonJS module at all?  Might be more secure.
   // The hangup is that the .js contains the necessary atomized expressions, and the .json does not.
   let previewResult
-  try {
-    previewResult = await previewPromise // make sure this is done before cleanup
-    // TODO: the following streaming code works, but the converted Markdown ends with a line break (\n) that we want
-    // to truncate, and I am not sure how to do that with the streaming code.  So we are reading everything into memory
-    // instead, for now.
-    // const fieldReplaceTransform = new Transform({
-    //   transform (chunk, encoding, callback) {
-    //     const schunk = chunk.toString('utf-8')
-    //       .replace(/\r\n/g, '\n')
-    //     schunk.split(/=:(\d+):=/g)
-    //       .forEach((item, index) => {
-    //         if (index % 2 === 0) {
-    //           this.push(item)
-    //         } else {
-    //           this.push(`{[${fieldLookup[item]}]}`)
-    //         }
-    //       })
-    //     callback()
-    //   }
-    // })
-    // const translatedPreviewPromise = new Promise((resolve, reject) => {
-    //   const inputStream = fs.createReadStream(previewResult.DocxGenTemplate)
-    //   const outputStream = fs.createWriteStream(templatePath + '.md')
-    //   docxToMarkdown.stream(inputStream)
-    //     .pipe(fieldReplaceTransform)
-    //     .pipe(outputStream)
-    //     .on('finish', resolve)
-    //     .on('error', reject)
-    // })
-    // await translatedPreviewPromise
+  if (!process.env.DISABLE_PANDOC || process.env.DISABLE_PANDOC === 'FALSE' || process.env.DISABLE_PANDOC === '0') {
+    try {
+      previewResult = await previewPromise // make sure this is done before cleanup
+      // TODO: the following streaming code works, but the converted Markdown ends with a line break (\n) that we want
+      // to truncate, and I am not sure how to do that with the streaming code.  So we are reading everything into memory
+      // instead, for now.
+      // const fieldReplaceTransform = new Transform({
+      //   transform (chunk, encoding, callback) {
+      //     const schunk = chunk.toString('utf-8')
+      //       .replace(/\r\n/g, '\n')
+      //     schunk.split(/=:(\d+):=/g)
+      //       .forEach((item, index) => {
+      //         if (index % 2 === 0) {
+      //           this.push(item)
+      //         } else {
+      //           this.push(`{[${fieldLookup[item]}]}`)
+      //         }
+      //       })
+      //     callback()
+      //   }
+      // })
+      // const translatedPreviewPromise = new Promise((resolve, reject) => {
+      //   const inputStream = fs.createReadStream(previewResult.DocxGenTemplate)
+      //   const outputStream = fs.createWriteStream(templatePath + '.md')
+      //   docxToMarkdown.stream(inputStream)
+      //     .pipe(fieldReplaceTransform)
+      //     .pipe(outputStream)
+      //     .on('finish', resolve)
+      //     .on('error', reject)
+      // })
+      // await translatedPreviewPromise
 
-    const markdownStream = docxToMarkdown.stream(fs.createReadStream(previewResult.DocxGenTemplate))
-    const chunks = []
-    for await (const chunk of markdownStream) {
-      chunks.push(chunk)
+      const markdownStream = docxToMarkdown.stream(fs.createReadStream(previewResult.DocxGenTemplate))
+      const chunks = []
+      for await (const chunk of markdownStream) {
+        chunks.push(chunk)
+      }
+      const buffer = Buffer.concat(chunks)
+      let previewStr = buffer.toString('utf-8')
+        .replace(/\r\n/g, '\n') // normalize line breaks
+      if (previewStr.endsWith('\n')) {
+        previewStr = previewStr.slice(0, -1) // truncate final line break
+      }
+      // reconstitute fields
+      previewStr = previewStr.split(/=:(\d+):=/g)
+        .map((item, index) => (index % 2) === 0 ? item : `{[${fieldLookup[item]}]}`)
+        .join('')
+      // ensure the converted preview string is a valid yatte text template! (otherwise error)
+      const compiledPreview = yatte.compileText(previewStr)
+      if (!compiledPreview.error) {
+        // persist in preview file
+        await fs.promises.writeFile((ttpl.Preview = templatePath + '.md'), previewStr, 'utf-8')
+      } else {
+        console.log(`Warning: unable to generate valid markdown preview for template ${templatePath}`)
+      }
+    } catch (err) {
+      console.error(err)
     }
-    const buffer = Buffer.concat(chunks)
-    let previewStr = buffer.toString('utf-8')
-      .replace(/\r\n/g, '\n') // normalize line breaks
-    if (previewStr.endsWith('\n')) {
-      previewStr = previewStr.slice(0, -1) // truncate final line break
-    }
-    // reconstitute fields
-    previewStr = previewStr.split(/=:(\d+):=/g)
-      .map((item, index) => (index % 2) === 0 ? item : `{[${fieldLookup[item]}]}`)
-      .join('')
-    // ensure the converted preview string is a valid yatte text template! (otherwise error)
-    const compiledPreview = yatte.compileText(previewStr)
-    if (!compiledPreview.error) {
-      // persist in preview file
-      await fs.promises.writeFile((ttpl.Preview = templatePath + '.md'), previewStr, 'utf-8')
-    } else {
-      console.log(`Warning: unable to generate valid markdown preview for template ${templatePath}`)
-    }
-  } catch (err) {
-    console.error(err)
+  } else {
+    console.log(`Warning: Pandoc disabled; unable to generate markdown preview for template ${templatePath}`)
   }
   // clean up interim/temp/obj files
   if (cleanUpArtifacts) {
