@@ -125,6 +125,43 @@ describe('Assembling documents from DOCX templates', function () {
     assert.ok(!validation.HasErrors, validation.ErrorList)
   })
 
+  it('inserttest5.docx: multiple inserts in multiple lists', async function () {
+    const signerProto = {
+      Insert: (scope) => new IndirectVirtual({ name: 'inserted5.docx' }, scope, 'docx'),
+    }
+    signerProto.Insert.logic = true // insertStub.logic = true
+    const makeObject = function (proto, obj) {
+      return Object.assign(Object.create(proto), obj)
+    }
+    const data = {
+      Var1: 'Top Level Info 1',
+      Var2: 'Top Level Info 2',
+      Var3: true,
+      Signers: [
+        makeObject(signerProto, { Name: 'John', Included: false }),
+        makeObject(signerProto, { Name: 'Mary', Included: true }),
+      ],
+    }
+    const templatePath = testUtil.GetTemplatePath('inserttest5.docx')
+    const evaluator = await openDocx.compileDocx(templatePath)
+    const scope = Scope.pushObject(data)
+    let count = 0
+    const result = await openDocx.assembleDocx(
+      templatePath,
+      testUtil.FileNameAppend(templatePath, '-assembled'),
+      scope,
+      async obj => {
+        count++
+        return testUtil.GetTemplatePath(obj.name)
+      },
+      templatePath + '-asmdata.xml',
+    )
+    assert.strictEqual(result.HasErrors, false)
+    assert.strictEqual(count, 2) // one for John, and ONLY one (not two!) for Mary
+    const validation = await templater.validateDocument({ documentFile: result.Document })
+    assert.ok(!validation.HasErrors, validation.ErrorList)
+  })
+
   it('should assemble (correctly) the MainInsertIndirect.docx template', async function () {
     const insertStub = (scope) => {
       return new IndirectVirtual({ name: 'conditional_margin.docx' }, scope, 'docx')

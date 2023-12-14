@@ -84,9 +84,12 @@ class XmlAssembler {
   indirectSub (indirect) {
     if (indirect.contentType !== 'text') { // docx, markdown, etc... substitute special placeholder
       // see if this indirect has already been encountered/added
-      let existing = this.indirects.find(ex => Object.keys(indirect).every(propName => (
-        indirect[propName] === ex[propName]
-      )))
+      let existing = this.indirects.find(ex => Object.keys(indirect).every(propName => {
+        const indPropVal = indirect[propName]
+        return (indPropVal && (indPropVal instanceof Scope))
+          ? indPropVal.valueEqualTo(ex[propName])
+          : indirect[propName] === ex[propName]
+      }))
       if (!existing) {
         existing = { ...indirect, id: uuidv4() }
         this.indirects.push(existing)
