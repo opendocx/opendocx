@@ -313,12 +313,12 @@ async function processIndirects (indirects, parentTemplateFile, optionalSaveXmlF
       // indir.assembledData was initialized by assembleData()'s recursive descent
       const { templateFile, xmlData, indirects, missing } = indir.assembledData
       if (optionalSaveXmlFile) {
-        fs.writeFileSync(templateFile + '_interim_data.xml', xmlData)
+        fs.writeFileSync(templateFile + `_interim_${indir.id}_data.xml`, xmlData)
       }
       await processIndirects(indirects, templateFile, optionalSaveXmlFile)
       indir.result = await assembleDocxWithIndirects(templateFile, xmlData, indirects, missing, null)
       if (optionalSaveXmlFile) {
-        fs.writeFileSync(templateFile + '_interim_assembled.docx', indir.result.Bytes)
+        fs.writeFileSync(templateFile + `_interim_${indir.id}_assembled.docx`, indir.result.Bytes)
       }
     } else {
       throw new Error(`Unexpected '${indir.contentType}' content type encountered during indirect processing`)
