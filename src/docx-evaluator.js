@@ -45,7 +45,12 @@ class XmlAssembler {
     }
     const frame = this.contextStack
     if (frame.frameType === Scope.LIST) {
-      throw new Error('Internal error: cannot define a member on a list context')
+      throw new Error(`Evaluation error: cannot retrieve a member '${expr}' (${
+        ident}) from a LIST; found a LIST when expecting a SINGLE object`)
+      // error message & handling on this needs work, but it happens when a list context (which is expected to
+      // represent an array of objects) actually contains an array OF ARRAYS of objects (nested instead of flat).
+      // OpenDocx attempts to define/look up property 'ident' from an item in the outer list, and it fails
+      // with this error because the item on which the lookup is being performed is, itself, another list.
     }
 
     const evaluator = Engine.compileExpr(expr) // these are cached so this should be fast
