@@ -88,7 +88,7 @@ class XmlAssembler {
         const indPropVal = indirect[propName]
         return (indPropVal && (indPropVal instanceof Scope))
           ? indPropVal.valueEqualTo(ex[propName])
-          : indirect[propName] === ex[propName]
+          : indPropVal === ex[propName]
       }))
       if (!existing) {
         existing = { ...indirect, id: uuidv4() }
