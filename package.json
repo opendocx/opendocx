@@ -32,18 +32,18 @@
   },
   "license": "MPL-2.0",
   "dependencies": {
-    "date-fns": "^2.15.0",
-    "edge-js": "^19.3.0",
+    "date-fns": "^2.30.0",
+    "edge-js": "^20.10.0",
     "path": "^0.12.7",
-    "semver": "^6.3.0",
+    "semver": "^7.5.4",
     "tiny-async-pool": "^1.2.0",
-    "util": "^0.11.1",
-    "uuid": "^3.3.3",
-    "yatte": "^2.0.0-beta.7"
+    "util": "^0.12.5",
+    "uuid": "^3.4.0",
+    "yatte": "^2.0.0"
   },
   "devDependencies": {
     "eslint": "^6.8.0",
-    "genversion": "^2.2.1",
+    "genversion": "^3.1.1",
     "mocha": "^10.2.0",
     "standard": "^14.3.4"
   }
