@@ -380,6 +380,45 @@ namespace OpenDocxTemplater.Tests
             Assert.True(File.Exists(result3.Document));
         }
 
+        [Theory]
+        [InlineData("addins_none.docx", "addins_none_one_added.docx")]
+        [InlineData("addins_existing.docx", "addins_existing_one_added.docx")]
+        [InlineData("addins_one.docx", "addins_one_one_added(updated).docx")]
+        public async Task AddTaskPane(string name, string outName)
+        {
+            var embedder = new OpenDocx.TaskPaneEmbedder();
+            var bytes = await File.ReadAllBytesAsync(GetTestTemplate(name));
+            var modBytes = embedder.EmbedTaskPane(
+              bytes,
+              "{635BF0CD-42CC-4174-B8D2-6D375C9A759E}",
+              "wa104380862",
+              "1.1.0.0",
+              "en-US",
+              "OMEX",
+              "right",
+              true,
+              350,
+              4
+            );
+            var outPath = GetTestOutput(outName);
+            await File.WriteAllBytesAsync(outPath, modBytes);
+            Assert.True(File.Exists(outPath));
+        }
+
+        [Theory]
+        [InlineData("addins_one.docx", "addins_one_removed.docx")]
+        [InlineData("addins_multi.docx", "addins_multi_removed.docx")]
+        [InlineData("addins_none.docx", "addins_none_removed.docx")]
+        public async Task RemoveTaskPane(string name, string outName)
+        {
+            var embedder = new OpenDocx.TaskPaneEmbedder();
+            var bytes = await File.ReadAllBytesAsync(GetTestTemplate(name));
+            var modBytes = embedder.RemoveTaskPane(bytes, "{635BF0CD-42CC-4174-B8D2-6D375C9A759E}");
+            var outPath = GetTestOutput(outName);
+            await File.WriteAllBytesAsync(outPath, modBytes);
+            Assert.True(File.Exists(outPath));
+        }
+
         //[Fact]
         //public void CompileTemplateSync()
         //{

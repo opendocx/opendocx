@@ -232,6 +232,49 @@ validateCompiledDocx.version = version
 exports.validateCompiledDocx = validateCompiledDocx
 
 /**
+ * Utility function to embed a task pane and web extension in a DOCX file, for the purpose of associating
+ * the DOCX file with an Office add-in so the appropriate task pane can open automatically when the document
+ * is opened.
+ *
+ * See this article for more information about these parameters:
+ * https://learn.microsoft.com/en-us/office/dev/add-ins/develop/automatically-open-a-task-pane-with-a-document#use-open-xml-to-tag-the-document
+ *
+ * @param {Buffer} docxBytes a NodeJS buffer containing the raw bytes of the DOCX file
+ * @param {string} guid the add-in's unique identifier (from the manifest)
+ * @param {string} addInId the AppSource asset ID of the add-in, e.g. "wa104380862"
+ * @param {string} version the full version string of the add-in, e.g. "1.1.0.0"
+ * @param {string} store Pointer to store or catalog, e.g. "en-US"
+ * @param {string} storeType Store or catalog type, e.g. "OMEX"
+ * @param {string} dockState The docking location for the task pane, e.g. "right"
+ * @param {boolean} visibility Force task pane to be visible, e.g. true
+ * @param {number} width Task pane initial width, e.g. 350
+ * @param {number} row Task pane row, e.g. 1
+ * @returns {Buffer} a NodeJS buffer containing the modified DOCX file (for saving or streaming)
+ */
+async function embedTaskPane (docxBytes, guid, addInId, version, store, storeType, dockState, visibility, width, row) {
+  const options = {
+    docxBytes, guid, addInId, version, store, storeType, dockState, visibility, width, row
+  }
+  const result = await docxTemplater.embedTaskPane(options)
+  return result
+}
+exports.embedTaskPane = embedTaskPane
+
+/**
+ * Utility function to remove a task pane and web extension from a DOCX file.
+ *
+ * @param {Buffer} docxBytes a NodeJS buffer containing the raw bytes of the DOCX file
+ * @param {string} guid the add-in's unique identifier (from the manifest)
+ * @returns {Buffer} a NodeJS buffer containing the modified DOCX file (for saving or streaming)
+ */
+async function removeTaskPane (docxBytes, guid) {
+  const options = { docxBytes, guid }
+  const result = await docxTemplater.removeTaskPane(options)
+  return result
+}
+exports.removeTaskPane = removeTaskPane
+
+/**
  * Assemble a DOCX file from an OpenDocx template and a Yatte data context. Produces a DOCX file as output.
  *
  * @param {string|object} template either the path to the OpenDocx template on the local disk, or an object

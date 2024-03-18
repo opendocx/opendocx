@@ -52,3 +52,19 @@ exports.validateDocument = util.promisify(
     methodName: 'ValidateDocumentAsync'
   })
 )
+
+exports.embedTaskPane = util.promisify(
+  edge.func({
+    assemblyFile: baseDll,
+    typeName: 'OpenDocx.TaskPaneEmbedder',
+    methodName: 'EmbedTaskPaneAsync'
+  })
+)
+
+exports.removeTaskPane = util.promisify(
+  edge.func({
+    assemblyFile: baseDll,
+    typeName: 'OpenDocx.TaskPaneEmbedder',
+    methodName: 'RemoveTaskPaneAsync'
+  })
+)
