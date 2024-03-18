@@ -39,7 +39,7 @@
     "tiny-async-pool": "^1.2.0",
     "util": "^0.12.5",
     "uuid": "^3.4.0",
-    "yatte": "^2.0.0"
+    "yatte": "^2.0.1"
   },
   "devDependencies": {
     "eslint": "^6.8.0",
