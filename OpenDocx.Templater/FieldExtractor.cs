@@ -42,7 +42,6 @@ namespace OpenDocx
             string fieldDelimiters = null;
             bool removeCustomProperties = true;
             object[] keepPropertyNames = null;
-            bool readFieldComments = false;
             var inputObj = (IDictionary<string, object>) input;
             if (inputObj.ContainsKey("fieldDelimiters")) {
                 fieldDelimiters = (string)inputObj["fieldDelimiters"];
@@ -53,24 +52,32 @@ namespace OpenDocx
             if (inputObj.ContainsKey("keepPropertyNames")) {
                 keepPropertyNames = (object[]) inputObj["keepPropertyNames"];
             }
-            if (inputObj.ContainsKey("readFieldComments")) {
-                readFieldComments = (bool) inputObj["readFieldComments"];
-            }
             await Task.Yield();
             return ExtractFields(templateFile, removeCustomProperties,
-                keepPropertyNames?.Select(o => (string)o), fieldDelimiters, readFieldComments);
+                keepPropertyNames?.Select(o => (string)o), fieldDelimiters);
         }
         #pragma warning restore CS1998
 
         public static FieldExtractResult ExtractFields(string templateFileName,
             bool removeCustomProperties = true, IEnumerable<string> keepPropertyNames = null,
-            string fieldDelimiters = null, bool readFieldComments = false)
+            string fieldDelimiters = null)
         {
             string newTemplateFileName = templateFileName + "obj.docx";
             string outputFile = templateFileName + "obj.json";
             WmlDocument templateDoc = new WmlDocument(templateFileName); // just reads the template's bytes into memory (that's all), read-only
-            WmlDocument preprocessedTemplate = null;
-            byte[] byteArray = templateDoc.DocumentByteArray;
+
+            var result = NormalizeTemplate(templateDoc.DocumentByteArray, removeCustomProperties, keepPropertyNames, fieldDelimiters);
+            // save the output (even in the case of error, since error messages are in the file)
+            var preprocessedTemplate = new WmlDocument(newTemplateFileName, result.NormalizedTemplate);
+            preprocessedTemplate.Save();
+            // also save extracted fields
+            File.WriteAllText(outputFile, result.ExtractedFields);
+            return new FieldExtractResult(newTemplateFileName, outputFile);
+        }
+
+        public static NormalizeResult NormalizeTemplate(byte[] templateBytes, bool removeCustomProperties = true,
+            IEnumerable<string> keepPropertyNames = null, string fieldDelimiters = null)
+        {
             var fieldAccumulator = new FieldAccumulator();
             var recognizer = FieldRecognizer.Default;
             OpenSettings openSettings = new OpenSettings();
@@ -84,27 +91,46 @@ namespace OpenDocx
             }
             using (MemoryStream mem = new MemoryStream())
             {
-                mem.Write(byteArray, 0, byteArray.Length); // copy template file (binary) into memory -- I guess so the template/file handle isn't held/locked?
+                mem.Write(templateBytes, 0, templateBytes.Length); // copy template bytes into memory stream
                 using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(mem, true, openSettings)) // read & parse that byte array into OXML document (also in memory)
                 {
                     // first, remove all the task panes / web extension parts from the template (if there are any)
                     wordDoc.DeleteParts<WebExTaskpanesPart>(wordDoc.GetPartsOfType<WebExTaskpanesPart>());
                     // next, extract all fields (and thus logic) from the template's content parts
-                    ExtractAllTemplateFields(wordDoc, recognizer, fieldAccumulator, readFieldComments,
+                    ExtractAllTemplateFields(wordDoc, recognizer, fieldAccumulator, false,
                         removeCustomProperties, keepPropertyNames);
                 }
-                preprocessedTemplate = new WmlDocument(newTemplateFileName, mem.ToArray());
+                using (var sw = new StringWriter())
+                {
+                    fieldAccumulator.JsonSerialize(sw);
+                    return new NormalizeResult(mem.ToArray(), sw.ToString());
+                }
             }
-            // save the output (even in the case of error, since error messages are in the file)
-            preprocessedTemplate.Save();
+        }
 
-            using (StreamWriter sw = File.CreateText(outputFile))
+        public static string ExtractFieldsOnly(byte[] docxBytes, string fieldDelimiters = null)
+        {
+            var fieldAccumulator = new FieldAccumulator();
+            var recognizer = FieldRecognizer.Default;
+            OpenSettings openSettings = new OpenSettings();
+            if (!string.IsNullOrWhiteSpace(fieldDelimiters))
+            {
+                recognizer = new FieldRecognizer(fieldDelimiters, null);
+            }
+            using (MemoryStream mem = new MemoryStream())
+            {
+                mem.Write(docxBytes, 0, docxBytes.Length); // copy template bytes into memory stream
+                using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(mem, true, openSettings)) // read & parse those bytes into OXML document (also in memory)
+                {
+                    // next, extract all fields (and thus logic) from the template's content parts
+                    ExtractAllTemplateFields(wordDoc, recognizer, fieldAccumulator, false, false, null);
+                }
+            }
+            using (var sw = new StringWriter())
             {
                 fieldAccumulator.JsonSerialize(sw);
-                sw.Close();
+                return sw.ToString();
             }
-
-            return new FieldExtractResult(newTemplateFileName, outputFile);
         }
 
         private static void ExtractAllTemplateFields(WordprocessingDocument wordDoc, FieldRecognizer recognizer,

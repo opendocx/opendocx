@@ -61,15 +61,22 @@ namespace OpenDocxTemplater.Tests
         }
 
         private Boolean IsValidJsonFile(string filePath) {
-            try {
-                string json = File.ReadAllText(filePath);
-                if (json.IndexOf('\r') >= 0) { // containing CR characters suggests bad line breaks
+            return IsValidJson(File.ReadAllText(filePath));
+        }
+
+        private Boolean IsValidJson(string json)
+        {
+            try
+            {
+                if (json.IndexOf('\r') >= 0)
+                { // containing CR characters suggests bad line breaks
                     return false;
                 }
                 var val = JsonConvert.DeserializeObject<object>(json);
                 return true;
             }
-            catch (Exception) {
+            catch (Exception)
+            {
                 return false;
             }
         }
@@ -226,7 +233,6 @@ namespace OpenDocxTemplater.Tests
 
         [Theory]
         [InlineData("HDLetter_Summary.docx", "«»")]
-        // [InlineData("HDSingleTrust.docx", "«»")] // WAY too slow - eliminating test case because it kills test perf
         [InlineData("HDTrust_RLT.docx", "«»")]
         [InlineData("HDSimple.docx", "«»")]
         public async void FieldExtractorAltSyntaxAsync(string name, string delims)
@@ -274,6 +280,26 @@ namespace OpenDocxTemplater.Tests
             // var odv = new OpenDocx.Validator();
             // var vr = odv.ValidateDocument(destinationTemplatePath);
             // Assert.False(vr.HasErrors, vr.ErrorList);
+        }
+
+        [Theory]
+        [InlineData("HDLetter_Summary.docx", "«»")]
+        [InlineData("HDTrust_RLT.docx", "«»")]
+        [InlineData("HDSimple.docx", "«»")]
+        public async void FieldExtractorLiteAltSyntaxAsync(string name, string delims)
+        {
+            var bytes = await File.ReadAllBytesAsync(GetTestTemplate(name));
+            var json = OpenDocx.FieldExtractor.ExtractFieldsOnly(bytes, delims);
+            Assert.False(string.IsNullOrWhiteSpace(json));
+            Assert.True(IsValidJson(json));
+            //var val = JsonConvert.DeserializeObject<JArray>(json);
+            //// sub in field number tokens to test replacement for CCRemover
+            //var fieldMap = new FieldReplacementIndex();
+            //foreach (JObject obj in FlattenFields(val))
+            //{
+            //    var oid = (string)obj["id"];
+            //    fieldMap[oid] = new FieldReplacement("=:" + oid + ":=");
+            //}
         }
 
         [Theory]

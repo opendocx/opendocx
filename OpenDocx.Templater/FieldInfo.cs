@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
+using System.IO;
 
 namespace OpenDocx
 {
@@ -46,15 +46,15 @@ namespace OpenDocx
             }
         }
 
-        public void JsonSerialize(System.IO.StreamWriter writer)
+        public void JsonSerialize(TextWriter writer)
         {
             System.Diagnostics.Debug.Assert(blocks.Count == 1);
-            writer.Write(blocks.Peek().JsonSerialize());
+            blocks.Peek().JsonSerialize(writer);
         }
 
         private interface ExtractedItem
         {
-            string JsonSerialize();
+            void JsonSerialize(TextWriter writer);
         }
 
         private class FieldBlock : ExtractedItem
@@ -86,21 +86,19 @@ namespace OpenDocx
             {
                 HasOtherContent = true;
             }
-            public string JsonSerialize()
+            public void JsonSerialize(TextWriter sw)
             {
-                var sw = new StringBuilder();
-                sw.Append('[');
+                sw.Write('[');
                 bool first = true;
                 foreach (var field in list)
                 {
                     if (first)
                         first = false;
                     else
-                        sw.Append(',');
-                    sw.Append(field.JsonSerialize());
+                        sw.Write(',');
+                    field.JsonSerialize(sw);
                 }
-                sw.Append(']');
-                return sw.ToString();
+                sw.Write(']');
             }
         }
 
@@ -113,18 +111,16 @@ namespace OpenDocx
                 content = fieldContent;
                 id = fieldId;
             }
-            public string JsonSerialize()
+            public void JsonSerialize(TextWriter sw)
             {
-                var sw = new StringBuilder();
-                sw.Append('{');
-                sw.Append("\"content\":\"");
-                sw.Append(content.Replace(@"\", @"\\").Replace(@"""", @"\""")
+                sw.Write('{');
+                sw.Write("\"content\":\"");
+                sw.Write(content.Replace(@"\", @"\\").Replace(@"""", @"\""")
                     .Replace("\r", String.Empty).Replace("\n", @"\\n"));
-                sw.Append("\",\"id\":\"");
-                sw.Append(id);
-                sw.Append("\"");
-                sw.Append('}');
-                return sw.ToString();
+                sw.Write("\",\"id\":\"");
+                sw.Write(id);
+                sw.Write("\"");
+                sw.Write('}');
             }
         }
     }

@@ -53,25 +53,33 @@ namespace OpenDocx
             string commentAuthor = null, string commentInitials = null)
         {
             byte[] byteArray = File.ReadAllBytes(normalizedTemplatePath);
-            WmlDocument transformedTemplate = null;
-            TemplateErrorList templateErrors;
-            using (MemoryStream memStream = new MemoryStream())
-            {
-                memStream.Write(byteArray, 0, byteArray.Length); // copy the bytes into an expandable MemoryStream
-                using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(memStream, true)) // read & parse that memory stream into an editable OXML document (also in memory)
-                {
-                    templateErrors = DoTemplateTransformation(wordDoc, destinationFormat, fieldMap,
-                        commentAuthor, commentInitials);
-                }
-                transformedTemplate = new WmlDocument(destinationTemplatePath, memStream.ToArray());
-            }
+            var transformResult = TransformTemplate(byteArray, destinationFormat, fieldMap, commentAuthor, commentInitials);
             // delete output file if it already exists (Save() below is supposed to always overwrite, but I just want to be sure)
             if (File.Exists(destinationTemplatePath)) {
                 File.Delete(destinationTemplatePath);
             }
             // save the output (even in the case of error, since error messages are in the file)
+            WmlDocument transformedTemplate = new WmlDocument(destinationTemplatePath, transformResult.Bytes);
             transformedTemplate.Save();
-            return templateErrors.ErrorList.Select(e => e.ToString()).ToArray();
+            return transformResult.Errors;
+        }
+
+        public static TemplateTransformResult TransformTemplate(byte[] normalizedTemplateBytes,
+            TemplateFormat destinationFormat, FieldReplacementIndex fieldMap,
+            string commentAuthor = null, string commentInitials = null)
+        {
+            TemplateErrorList templateErrors;
+            using (MemoryStream memStream = new MemoryStream())
+            {
+                memStream.Write(normalizedTemplateBytes, 0, normalizedTemplateBytes.Length); // copy the bytes into an expandable MemoryStream
+                using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(memStream, true)) // read & parse that memory stream into an editable OXML document (also in memory)
+                {
+                    templateErrors = DoTemplateTransformation(wordDoc, destinationFormat, fieldMap,
+                        commentAuthor, commentInitials);
+                }
+                return new TemplateTransformResult(memStream.ToArray(),
+                    templateErrors.ErrorList.Select(e => e.ToString()).ToArray());
+            }
         }
 
         private static TemplateErrorList DoTemplateTransformation(WordprocessingDocument wordDoc,

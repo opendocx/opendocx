@@ -15,4 +15,16 @@ namespace OpenDocx
             ExtractedFields = extractedFields;
         }
     }
+
+    public class NormalizeResult
+    {
+        public byte[] NormalizedTemplate { get; }
+        public string ExtractedFields { get; }
+
+        internal NormalizeResult(byte[] normalizedTemplate, string extractedFields)
+        {
+            NormalizedTemplate = normalizedTemplate;
+            ExtractedFields = extractedFields;
+        }
+    }
 }
