@@ -42,14 +42,14 @@ describe('Manipulating task panes in DOCX files', function () {
       const buffer = await fs.promises.readFile(filePath)
       const modBuffer = await openDocx.embedTaskPane(
         buffer,
-        '{635BF0CD-42CC-4174-B8D2-6D375C9A759E}',
-        'wa104380862',
-        '1.1.0.0',
-        'en-US',
-        'OMEX',
-        'right',
+        '{EB6BB36C-F504-FA4F-A5F3-E729F7D3589A}',
+        '8eb22e22-73c3-40a5-a8d8-ddae1c07065a',
+        '1.0.0.2',
+        'EXCatalog',
+        'EXCatalog',
+        'left',
         true,
-        350,
+        400,
         1,
       )
       const outFilePath = testUtil.FileNameAppend(filePath, output)
