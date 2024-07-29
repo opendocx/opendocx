@@ -2,7 +2,8 @@
 'use strict'
 
 const docxTemplater = require('./docx-templater')
-const XmlAssembler = require('./docx-evaluator')
+// const XmlAssembler = require('./docx-evaluator')
+const XmlAssembler = require('./indirect-assembler')
 const yatte = require('yatte')
 const fs = require('fs')
 // const { Transform } = require('stream')

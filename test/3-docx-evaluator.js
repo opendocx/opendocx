@@ -3,7 +3,8 @@ const { describe, it } = require('mocha')
 const openDocx = require('../src/index')
 const assert = require('assert')
 const fs = require('fs')
-const XmlAssembler = require('../src/docx-evaluator')
+// const XmlAssembler = require('../src/docx-evaluator')
+const XmlAssembler = require('../src/indirect-assembler')
 const testUtil = require('./test-utils')
 const Scope = require('yatte').Scope
 
