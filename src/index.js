@@ -10,7 +10,7 @@ const fs = require('fs')
 const OD = yatte.FieldTypes
 const Atomizer = require('./field-expr-namer')
 const version = require('./version')
-const loadTemplateModule = require('./load-template-module')
+// const loadTemplateModule = require('./load-template-module')
 const { docxToMarkdown, markdownToDocx } = require('./pandoc')
 // const asyncPool = require('tiny-async-pool')
 
@@ -87,7 +87,7 @@ async function compileDocx (
   // use the simplified AST to dynamically create CommonJS module capable of creating a DocxGen XML data file
   // (matched to the DocxGen template) from any OpenDocx/Yatte data context
   const outputJsPath = templatePath + '.js'
-  fs.writeFileSync(outputJsPath, createTemplateJsModule(rast))
+  // fs.writeFileSync(outputJsPath, createTemplateJsModule(rast)) // deprecated -- no longer used in assembly
   ttpl.ExtractedLogic = outputJsPath
   // NOTE: we will be investingating other ways of processing the AST dynamically,
   // so maybe we just write out the .json rather than .js/CommonJS module at all?  Might be more secure.
@@ -195,22 +195,16 @@ exports.compileDocx = compileDocx
 async function validateCompiledDocx (templatePath) {
   // templatePath should have been compiled (previously) so the expected files will be on disk
   // but if not we'll compile it now
-  const extractedLogic = templatePath + '.js'
+  const extractedLogicTree = templatePath + '.json'
   const docxGenTemplate = templatePath + 'gen.docx'
   const previewTemplate = templatePath + '.md'
   let needRegen = false
-  if (!fs.existsSync(extractedLogic) || !fs.existsSync(docxGenTemplate)) {
+  if (!fs.existsSync(extractedLogicTree) || !fs.existsSync(docxGenTemplate)) {
     console.log(
       'Warning: compiled template not found; generating. Pre-compile to maximize performance\n    ' + templatePath)
     needRegen = true
   } else {
-    try {
-      loadTemplateModule(extractedLogic)
-    } catch (e) {
-      console.log('Warning: ' + e.toString() +
-        '\nPre-compile templates when upgrading to avoid performance penalty on first use\n    ' + templatePath)
-      needRegen = true
-    }
+    // consider whether to add something to extractedLogicTree so we can do a version check on it?
   }
   let compileResult
   if (needRegen) {
@@ -219,8 +213,8 @@ async function validateCompiledDocx (templatePath) {
     compileResult = {
       Template: templatePath,
       HasErrors: false,
-      ExtractedLogic: extractedLogic,
-      ExtractedLogicTree: templatePath + '.json',
+      ExtractedLogic: templatePath + '.js',
+      ExtractedLogicTree: extractedLogicTree,
       DocxGenTemplate: docxGenTemplate,
     }
     if (fs.existsSync(previewTemplate)) {
@@ -441,89 +435,4 @@ const buildFieldDictionary = function (astBody, fieldDict, atoms, parent = null)
       fieldDict[obj.id] = fieldObj
     }
   }
-}
-
-const createTemplateJsModule = function (ast) {
-  const sb = ["'use strict';"]
-  sb.push(`exports.version='${version}';`)
-  sb.push('exports.evaluate=function(cx,cl,h)')
-  sb.push(serializeContextInDataJs(ast, '_odx', 'cx', 'cl', null))
-  return sb.join('\n')
-}
-
-const serializeContextInDataJs = function (contentArray, id, objIdent, locIdent, parentNode) {
-  return `{
-h.beginObject('${id}',${objIdent}${locIdent ? (',' + locIdent) : ''});
-${serializeContentArrayAsDataJs(contentArray, parentNode)}
-h.endObject()
-}`
-}
-
-const serializeAstNodeAsDataJs = function (astNode, parent) {
-  let atom
-  if (astNode.expr) {
-    if (astNode.expr === '_punc') {
-      // special case: list punctuation: use a customized "atom" derived from the list expression
-      atom = parent.atom + 'p'
-    } else if (astNode.type === OD.If || astNode.type === OD.ElseIf) {
-      // special case: evaluating an expression for purposes of determining its truthiness rather than its actual value
-      atom = astNode.atom + 'b'
-    } else { // regular case: atom based on expression
-      atom = astNode.atom
-    }
-  }
-  switch (astNode.type) {
-    case OD.Content:
-      return `h.define('${atom}','${escapeExpressionStr(astNode.expr)}');`
-
-    case OD.List: {
-      const a0 = atom + 'i' // special atom representing individual items in the list, rather than the entire list
-      return `for(const ${a0} of h.beginList('${atom}', '${escapeExpressionStr(astNode.expr)}'))
-${serializeContextInDataJs(astNode.contentArray, a0, a0, '', astNode)}
-h.endList();`
-    }
-
-    case OD.If:
-      return `if(h.beginCondition('${atom}','${escapeExpressionStr(astNode.expr)}'))
-{
-${serializeContentArrayAsDataJs(astNode.contentArray, astNode)}
-}`
-
-    case OD.ElseIf:
-      return `} else {
-if(h.beginCondition('${atom}','${escapeExpressionStr(astNode.expr)}'))
-{
-${serializeContentArrayAsDataJs(astNode.contentArray, astNode)}
-}`
-
-    case OD.Else:
-      return `} else {
-${serializeContentArrayAsDataJs(astNode.contentArray, astNode)}
-`
-
-    default:
-      throw new Error('unexpected node type -- unable to serialize')
-  }
-}
-
-const serializeContentArrayAsDataJs = function (contentArray, parent) {
-  const sb = []
-  for (const obj of contentArray) {
-    sb.push(serializeAstNodeAsDataJs(obj, parent))
-  }
-  // in 2.0.0-alpha, we stopped including _punc nodes in the contentArray
-  // but the Js (insofar as we will actually use it?) still needs to capture the _punc, so synthesize it here
-  if (parent && parent.type === OD.List) {
-    var lastItem = !contentArray.length || contentArray[contentArray.length - 1]
-    if (!lastItem || lastItem.type !== OD.Content || lastItem.expr !== '_punc') {
-      sb.push(serializeAstNodeAsDataJs({ type: OD.Content, expr: '_punc' }, parent))
-    }
-  }
-  return sb.join('\n')
-}
-
-const singleQuotes = /(?<=\\\\)'|(?<!\\)'/g
-
-const escapeExpressionStr = function (strExpr) {
-  return strExpr.replace(singleQuotes, "\\'")
 }

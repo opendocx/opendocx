@@ -81,11 +81,11 @@ async function doTest (templateName) {
   assert.doesNotThrow(() => {
     astLogic = JSON.parse(fs.readFileSync(result.ExtractedLogicTree, 'utf8'))
   })
-  assert(fs.existsSync(result.ExtractedLogic))
-  let jsfunc
-  assert.doesNotThrow(() => {
-    jsfunc = require(result.ExtractedLogic)
-  })
+  // assert(fs.existsSync(result.ExtractedLogic))
+  // let jsfunc
+  // assert.doesNotThrow(() => {
+  //   jsfunc = require(result.ExtractedLogic)
+  // })
   const validation2 = await templater.validateDocument({ documentFile: result.DocxGenTemplate })
   assert.ok(!validation2.HasErrors, validation2.ErrorList)
 }
