@@ -22,6 +22,7 @@ using Wetp = DocumentFormat.OpenXml.Office2013.WebExtentionPane;
 using System.Linq;
 using System.IO.Packaging;
 using DocumentFormat.OpenXml.Office2013.WebExtentionPane;
+using System.Xml;
 
 namespace OpenDocx;
 
@@ -180,6 +181,58 @@ public class TaskPaneEmbedder
         }
     }
 
+    public TaskPaneMetadata[] GetTaskPaneInfo(byte[] docxBytes) {
+        var result = new List<TaskPaneMetadata>();
+        using (MemoryStream memoryStream = new MemoryStream(docxBytes))
+        {
+            using (var document = WordprocessingDocument.Open(memoryStream, false))
+            {
+                var taskPanesPart = document.WebExTaskpanesPart;
+                if (taskPanesPart != null)
+                {
+                    foreach (var webExtensionPart in taskPanesPart.GetPartsOfType<WebExtensionPart>()) {
+                        var resultItem = new TaskPaneMetadata();
+                        var webExtension = webExtensionPart.WebExtension;
+                        resultItem.Guid = webExtension.Id;
+
+                        var storeReference = webExtension.WebExtensionStoreReference;
+                        resultItem.AddInId = storeReference.Id;
+                        resultItem.Version = storeReference.Version;
+                        resultItem.Store = storeReference.Store;
+                        resultItem.StoreType = storeReference.StoreType;
+
+                        var webExtensionPropertyBag = webExtension.WebExtensionPropertyBag;
+                        var autoShowProperty = webExtensionPropertyBag
+                            .Descendants<We.WebExtensionProperty>()
+                            .Where(p => p.Name == "Office.AutoShowTaskpaneWithDocument")
+                            .FirstOrDefault();
+                        if (autoShowProperty != null) {
+                            resultItem.AutoShow = XmlConvert.ToBoolean(autoShowProperty.Value);
+                        }
+                        // look up task pane for this web extension
+                        var relationshipId = taskPanesPart.GetIdOfPart(webExtensionPart);
+                        // find existing task pane ref
+                        // searching for webExtensionTaskpane within existing children of taskpanes
+                        var webExtensionPartReference = taskPanesPart.Taskpanes
+                            .Descendants<Wetp.WebExtensionPartReference>()
+                            .Where(r => r.Id == relationshipId)
+                            .FirstOrDefault();
+                        if (webExtensionPartReference != null)
+                        {
+                            var webExtensionTaskpane = (WebExtensionTaskpane) webExtensionPartReference.Parent;
+                            resultItem.DockState = webExtensionTaskpane.DockState;
+                            resultItem.Visibility = webExtensionTaskpane.Visibility;
+                            resultItem.Width = webExtensionTaskpane.Width;
+                            resultItem.Row = webExtensionTaskpane.Row;
+                        }
+                        result.Add(resultItem);
+                    }
+                }
+            }
+        }
+        return result.ToArray();
+    }
+
     // when calling from Node.js via Edge, we only get to pass one parameter
     public async Task<object> EmbedTaskPaneAsync(dynamic input)
     {
@@ -202,5 +255,11 @@ public class TaskPaneEmbedder
         var docxBytes = (byte[])input.docxBytes;
         var guid = (string)input.guid;
         return RemoveTaskPane(docxBytes, guid);
+    }
+
+    public async Task<object> GetTaskPaneInfoAsync(dynamic input)
+    {
+        var docxBytes = (byte[])input.docxBytes;
+        return GetTaskPaneInfo(docxBytes);
     }
 }

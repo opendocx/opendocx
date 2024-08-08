@@ -445,6 +445,18 @@ namespace OpenDocxTemplater.Tests
             Assert.True(File.Exists(outPath));
         }
 
+        [Theory]
+        [InlineData("addins_one.docx", 1)]
+        [InlineData("addins_multi.docx", 2)]
+        [InlineData("addins_none.docx", 0)]
+        public async Task GetTaskPaneInfo(string name, int expectedCount)
+        {
+            var embedder = new OpenDocx.TaskPaneEmbedder();
+            var bytes = await File.ReadAllBytesAsync(GetTestTemplate(name));
+            var metadata = embedder.GetTaskPaneInfo(bytes);
+            Assert.Equal(expectedCount, metadata.Length);
+        }
+
         //[Fact]
         //public void CompileTemplateSync()
         //{
