@@ -275,6 +275,19 @@ async function removeTaskPane (docxBytes, guid) {
 exports.removeTaskPane = removeTaskPane
 
 /**
+ * Utility function to extract metadata about any task panes embedded in a DOCX file.
+ *
+ * @param {Buffer} docxBytes a NodeJS buffer containing the raw bytes of the DOCX file
+ * @returns {Array<object>} a JS array of metadata about all task panes found in the DOCX file
+ */
+async function getTaskPaneInfo (docxBytes) {
+  const options = { docxBytes }
+  const result = await docxTemplater.getTaskPaneInfo(options)
+  return result
+}
+exports.getTaskPaneInfo = getTaskPaneInfo
+
+/**
  * Assemble a DOCX file from an OpenDocx template and a Yatte data context. Produces a DOCX file as output.
  *
  * @param {string|object} template either the path to the OpenDocx template on the local disk, or an object

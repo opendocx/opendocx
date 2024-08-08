@@ -78,4 +78,18 @@ describe('Manipulating task panes in DOCX files', function () {
       assert.ok(!validation.HasErrors, validation.ErrorList)
     })
   })
+
+  const extracttests = [
+    { template: 'addins_one.docx', expected: 1, comment: 'should read task pane info from a DOCX that has one addin' },
+    { template: 'addins_multi.docx', expected: 2, comment: 'should read task pane info from a DOCX that has multiple addins' },
+    { template: 'addins_none.docx', expected: 0, comment: 'should read task pane info from a DOCX with no addins' },
+  ]
+  extracttests.forEach(({ template, expected, comment }) => {
+    it(comment, async function () {
+      const filePath = testUtil.GetTemplatePath(template)
+      const buffer = await fs.promises.readFile(filePath)
+      const result = await openDocx.getTaskPaneInfo(buffer)
+      assert.strictEqual(result.length, expected)
+    })
+  })
 })

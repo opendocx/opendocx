@@ -68,3 +68,11 @@ exports.removeTaskPane = util.promisify(
     methodName: 'RemoveTaskPaneAsync'
   })
 )
+
+exports.getTaskPaneInfo = util.promisify(
+  edge.func({
+    assemblyFile: baseDll,
+    typeName: 'OpenDocx.TaskPaneEmbedder',
+    methodName: 'GetTaskPaneInfoAsync'
+  })
+)
