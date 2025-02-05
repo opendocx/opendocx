@@ -39,6 +39,10 @@ namespace OpenDocxTemplater.Tests
         [InlineData("simple-short.docx")]
         [InlineData("StrayCC.docx")]
         [InlineData("NestedFieldWeird.docx")]
+        [InlineData("DA270-ConditionalBookmark.docx")]
+        [InlineData("DA271-ConditionalBookmark.docx")]
+        [InlineData("DA272-InlineConditionalBookmark.docx")]
+        [InlineData("DA273-InlineConditionalBookmark.docx")]
         public void CompileTemplate(string name)
         {
             DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
