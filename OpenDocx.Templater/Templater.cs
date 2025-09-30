@@ -9,6 +9,7 @@ Email: lowell@opendocx.com
 
 ***************************************************************************/
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.IO;
@@ -31,6 +32,10 @@ namespace OpenDocx
 
         public CompileResult CompileTemplate(string originalTemplateFile, string preProcessedTemplateFile, string parsedFieldInfoFile)
         {
+            if (string.IsNullOrWhiteSpace(parsedFieldInfoFile) || !File.Exists(parsedFieldInfoFile))
+            {
+                throw new ArgumentException("Field info file is missing", nameof(parsedFieldInfoFile));
+            }
             string json = File.ReadAllText(parsedFieldInfoFile);
             var xm = JsonConvert.DeserializeObject<FieldTransformIndex>(json);
             // translate xm into a simple Dictionary<string, string> so we can use basic TemplateTransformer
