@@ -33,7 +33,7 @@
   "license": "MPL-2.0",
   "dependencies": {
     "date-fns": "^2.30.0",
-    "edge-js": "^20.10.0",
+    "edge-js": "^20.10.2",
     "path": "^0.12.7",
     "semver": "^7.5.4",
     "tiny-async-pool": "^1.2.0",
