@@ -100,33 +100,56 @@ namespace OpenDocxTemplater.Tests
                 cc => Assert.Null(cc.Descendants(W.sdt).FirstOrDefault()));
         }
 
-        [Theory]
-        //[InlineData("MissingEndIfPara.docx")]
-        //[InlineData("MissingEndIfRun.docx")]
-        //[InlineData("MissingIfRun.docx")]
-        //[InlineData("MissingIfPara.docx")]
-        [InlineData("NonBlockIf.docx")]
-        [InlineData("NonBlockEndIf.docx")]
-        [InlineData("kMANT.docx")]
-        //[InlineData("crasher.docx")]
-        public void CompileErrors(string name)
-        {
-            DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
-            FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
-            DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
-            FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, name));
-            string templateName = outputDocx.FullName;
-            templateDocx.CopyTo(templateName, true);
-            var extractResult = OpenDocx.FieldExtractor.ExtractFields(templateName);
-            Assert.True(File.Exists(extractResult.ExtractedFields));
-            Assert.True(File.Exists(extractResult.TempTemplate));
+        // [Theory]
+        // [InlineData("MissingEndIfPara.docx")]
+        // [InlineData("MissingEndIfRun.docx")]
+        // [InlineData("MissingIfRun.docx")]
+        // [InlineData("MissingIfPara.docx")]
+        // [InlineData("NonBlockIf.docx")]
+        // [InlineData("NonBlockEndIf.docx")]
+        // [InlineData("kMANT.docx")]
+        // [InlineData("crasher.docx")]
+        // public void CompileErrors(string name)
+        // {
+        //     DirectoryInfo sourceDir = new DirectoryInfo("../../../../test/templates/");
+        //     FileInfo templateDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
+        //     DirectoryInfo destDir = new DirectoryInfo("../../../../test/history/dot-net-results");
+        //     FileInfo outputDocx = new FileInfo(Path.Combine(destDir.FullName, name));
+        //     string templateName = outputDocx.FullName;
+        //     templateDocx.CopyTo(templateName, true);
+        //     var extractResult = OpenDocx.FieldExtractor.ExtractFields(templateName);
+        //     Assert.True(File.Exists(extractResult.ExtractedFields));
+        //     Assert.True(File.Exists(extractResult.TempTemplate));
 
-            var templater = new Templater();
-            // warning... the file 'templateName + "obj.fields.json"' must have been created by node.js external to this test. (hack/race)
-            var compileResult = templater.CompileTemplate(templateName, extractResult.TempTemplate, templateName + "obj.fields.json");
-            Assert.True(compileResult.HasErrors);
-            Assert.True(File.Exists(compileResult.DocxGenTemplate));
-        }
+        //     // warning... the file 'templateName + "obj.fields.json"' must have been created by node.js external to this test. (hack/race)
+        //     // update... as of 2023, that file no longer gets created anyway, at least for a template that has parse errors...
+        //     // but either way, that file (which might be described as a "parsed, but not yet validated, field dictionary")
+        //     // seems to be an internal implementation detail of the javascript side and should not be relied on here in .NET.
+        //     // To the extent we really need it, we should create it ourselves from the artifacts we have on hand.
+        //     string parsedFieldInfoFileName = name + "obj.fields.json";
+        //     string parsedFieldInfoFile = templateName + "obj.fields.json";
+        //     if (!File.Exists(parsedFieldInfoFileName))
+        //         throw new Xunit.Sdk.SkipException($"Test requires a parsed field info file ({parsedFieldInfoFileName})");
+
+        //     var templater = new Templater();
+        //     var compileResult = templater.CompileTemplate(templateName, extractResult.TempTemplate, parsedFieldInfoFile);
+        //     //     What are we really testing for here? We are attempting to test that then you call CompileTemplate,
+        //     // and pass in a template that is known to have certain errors, those errors get reported in the expected
+        //     // and correct way. But it's nonsensical because the very errors we know are in these test templates, are now
+        //     // preventing the artifact from being created in the first place. And it's nonsense to pass the filename of a
+        //     // non-existing artifact into a test anyway, unless what you're testing for is that the non-existence itself causes the error.
+
+        //     // The fact is, templater.CompileTemplate itself is an implementation detail of opendocx... outsiders call
+        //     // the main compileDocx() entry point in JS, which after extracting fields then uses yatte to parse the fields
+        //     // and validate the field nesting. If that fails, CompileTemplate never gets called in the first place.
+        //     // So I think we are testing the wrong thing here! CompileTemplate only ever need be called (or tested)
+        //     // if the template has already been validated to not contain any field nesting errors!
+        //     // Seems like what we should instead be testing is, if the .NET code has its own way to parse and validate fields
+        //     // (that does not depend on .NET), then that's what this should be testing. If the .NET code does NOT have
+        //     // that ability, then there may be nothing to test here.
+        //     Assert.True(compileResult.HasErrors);
+        //     Assert.True(File.Exists(compileResult.DocxGenTemplate));
+        // }
 
         [Theory]
         [InlineData("SmartTags.docx")] // this document has an invalid smartTag element (apparently inserted by 3rd party software)
