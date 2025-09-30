@@ -25,7 +25,8 @@ describe('Producing files necessary for .NET Unit Tests to run', function () {
     { template: 'DA270-ConditionalBookmark.docx' },
     { template: 'DA271-ConditionalBookmark.docx' },
     { template: 'DA272-InlineConditionalBookmark.docx' },
-    { template: 'DA273-InlineConditionalBookmark.docx' }
+    { template: 'DA273-InlineConditionalBookmark.docx' },
+    { template: 'notext.docx' }
   ]
   cases
     .forEach(({ template }) => {

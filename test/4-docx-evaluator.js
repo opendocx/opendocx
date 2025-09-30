@@ -32,6 +32,8 @@ describe('Assembling documents from DOCX templates', function () {
     { template: 'quote1.docx', data: { D: { T: 'Children\'s Trust' } }, compileFirst: true },
     { template: 'whitespace.docx', data: { whitespace: '                  ', nobreak: '                  ' },
       compileFirst: true, saveXml: true },
+    { template: 'notext.docx', data: {},
+      compileFirst: true, saveXml: true },
   ]
 
   tests.forEach(({ template, data, compileFirst, saveXml, description }) => {

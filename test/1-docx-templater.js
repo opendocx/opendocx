@@ -15,7 +15,8 @@ describe('Extracting fields from DOCX templates (white box)', async function () 
     { template: 'fieldmatch-text.docx' },
     { template: 'header-footer-cc.docx' },
     { template: 'header-footer-text.docx' },
-    { template: 'conditional_margin.docx' }
+    { template: 'conditional_margin.docx' },
+    { template: 'notext.docx' }
     // { template: 'conditional_margin_nb.docx' },
     // disabled because it *doesn't* produce those artifacts, because
     // (1) OXPT doesn't yet support having section breaks on the same paragraph as a Conditional/EndConditional tags! and
