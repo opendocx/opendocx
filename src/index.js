@@ -12,6 +12,7 @@ const version = require('./version')
 const loadTemplateModule = require('./load-template-module')
 const { docxToMarkdown, markdownToDocx } = require('./pandoc')
 // const asyncPool = require('tiny-async-pool')
+// const { different } = require('simple-comparator')
 
 /**
  * Transform an OpenDocx template to produce the following reusable artifacts:
@@ -64,7 +65,7 @@ async function compileDocx (
   const fieldList = JSON.parse(fs.readFileSync(result.ExtractedFields, 'utf8'))
   const fieldLookup = indexFields(fieldList)
   // use the yatte engine to parse all the fields, creating an AST for the template
-  const ast = yatte.Engine.parseContentArray(fieldList)
+  const ast = yatte.Engine.parseContentArray(fieldList) // this will throw if there are mismatched paired fields!!
   // create a map from field ID to nodes in the AST, and save it in a temp file
   const fieldDict = {}
   const atoms = new Atomizer()
@@ -78,6 +79,18 @@ async function compileDocx (
   options.fieldInfoFile = fieldDictPath
   const ttpl = await docxTemplater.compileTemplate(options)
   ttpl.Template = templatePath
+
+  // sample: temporarily serialize the AST out to a temp file so we can inspect it!
+  // const astPath = templatePath + 'obj.ast.json'
+  // fs.writeFileSync(astPath, JSON.stringify(ast))
+
+  // sample: temporarily convert the field dict BACK to an AST, and compare with the original,
+  // to make sure we can faithfully reproduce it!
+  // const ast2 = fieldDictToContentTree(fieldDict, true)
+  // if (different(ast, ast2)) {
+  //   throw new Error('Error in fieldDictToContentTree!')
+  // }
+
   // simplify the logic of the AST and save it for potential future use
   const simplifiedAstPath = templatePath + '.json'
   const rast = yatte.Engine.buildLogicTree(ast) // prunes logically insignificant nodes from ast
@@ -191,14 +204,14 @@ exports.compileDocx = compileDocx
  *
  * @param {string} templatePath the path to the OpenDocx template on the local disk
  */
-async function validateCompiledDocx (templatePath) {
+async function validateCompiledDocx (templatePath, logicOnly = false) {
   // templatePath should have been compiled (previously) so the expected files will be on disk
   // but if not we'll compile it now
   const extractedLogic = templatePath + '.js'
   const docxGenTemplate = templatePath + 'gen.docx'
   const previewTemplate = templatePath + '.md'
   let needRegen = false
-  if (!fs.existsSync(extractedLogic) || !fs.existsSync(docxGenTemplate)) {
+  if (!fs.existsSync(extractedLogic) || (!logicOnly && !fs.existsSync(docxGenTemplate))) {
     console.log(
       'Warning: compiled template not found; generating. Pre-compile to maximize performance\n    ' + templatePath)
     needRegen = true
@@ -307,7 +320,7 @@ exports.getTaskPaneInfo = getTaskPaneInfo
 async function assembleDocx (template, outputFile, data, getTemplatePath, optionalSaveXmlFile) {
   // recursively create all XML and "tap out" all inserts
   // (so by the time we get to the .NET code below, we've already gotten all the templates!)
-  const dataAssembler = await assembleData(template, data, getTemplatePath)
+  const dataAssembler = await assembleData(template, data, getTemplatePath, false)
   const { templateFile, xmlData, indirects, missing, errors } = dataAssembler
   const dataSuccess = !errors || !errors.length
   if (optionalSaveXmlFile) {
@@ -329,13 +342,13 @@ async function assembleDocx (template, outputFile, data, getTemplatePath, option
 assembleDocx.version = version
 exports.assembleDocx = assembleDocx
 
-async function assembleData (template, data, getTemplatePath) {
+async function assembleData (template, data, getTemplatePath, ignoreTemplates = false) {
   if (typeof template !== 'string' && typeof getTemplatePath === 'function') {
     template = await getTemplatePath(template)
   }
   // template should have been compiled (previously) so the expected files will be on disk
   // but if not we'll compile it now
-  const { ExtractedLogic, DocxGenTemplate } = await validateCompiledDocx(template)
+  const { ExtractedLogic, DocxGenTemplate } = await validateCompiledDocx(template, ignoreTemplates)
   const dataAssembler = new XmlAssembler(data)
   dataAssembler.templateFile = DocxGenTemplate
   dataAssembler.xmlData = dataAssembler.assembleXml(ExtractedLogic)
@@ -344,13 +357,14 @@ async function assembleData (template, data, getTemplatePath) {
     if (dataAssembler.indirects && dataAssembler.indirects.length > 0) {
       for (const indir of dataAssembler.indirects) {
         if (!indir.contentType || indir.contentType === 'docx') {
-          indir.assembledData = await assembleData(indir, indir.scope, getTemplatePath)
+          indir.assembledData = await assembleData(indir, indir.scope, getTemplatePath, ignoreTemplates)
         }
       }
     }
   }
   return dataAssembler
 }
+exports.assembleData = assembleData
 
 async function processIndirects (indirects, parentTemplateFile, optionalSaveXmlFile) {
   if (!indirects) return
@@ -381,6 +395,7 @@ async function processIndirects (indirects, parentTemplateFile, optionalSaveXmlF
     }
   }
 }
+exports.processIndirects = processIndirects
 
 async function assembleDocxWithIndirects (templateFile, xmlData, indirects, missingObj, outputFile = null) {
   // const hasInserts = indirects && indirects.length > 0
@@ -416,6 +431,7 @@ async function assembleDocxWithIndirects (templateFile, xmlData, indirects, miss
   result.Errors = errors
   return result
 }
+exports.assembleDocxWithIndirects = assembleDocxWithIndirects
 
 const indexFields = function (fieldList, lookup = []) {
   for (const fldObj of fieldList) {
@@ -538,4 +554,47 @@ const singleQuotes = /(?<=\\\\)'|(?<!\\)'/g
 
 const escapeExpressionStr = function (strExpr) {
   return strExpr.replace(singleQuotes, "\\'")
+}
+
+const fieldDictToContentTree = function (fieldDict, addPunc = false) {
+  // Step 1: Map to output shape, ignore "parent"
+  const fields = Object.entries(fieldDict)
+    .map(([id, f]) => ({
+      type: f.fieldType,
+      id,
+      ...(f.expr && { expr: f.expr }),
+      ...(f.atomizedExpr && f.fieldType !== 'EndList' && { atom: f.atomizedExpr }),
+    }))
+    .sort((a, b) => Number(a.id) - Number(b.id))
+  // Step 2: nest field objects appropriately
+  const stack = [[]]
+  let current = stack.at(-1)
+  while (fields.length > 0) {
+    const field = fields.pop()
+    if (field.type === 'EndList' || field.type === 'EndIf') {
+      // Start a new accumulation block
+      current = [field]
+      if (addPunc && field.type === 'EndList') { // legacy ASTs have _punc nodes... add them here if requested
+        current.unshift({ type: 'Content', expr: '_punc' })
+      }
+      stack.push(current)
+    } else if (['List', 'If', 'ElseIf', 'Else'].includes(field.type)) {
+      // this field consumes the current accumulation block
+      field.contentArray = stack.pop()
+      if (field.type === 'List' || field.type === 'If') {
+        // this field gets added to the parent accumulation black
+        current = stack.at(-1)
+        current.unshift(field)
+      } else { // ElseIf or Else
+        // this field gets added to a new accumulation block
+        current = [field]
+        stack.push(current)
+      }
+    } else {
+      // Content node
+      current.unshift(field)
+    }
+  }
+  // assert stack.length === 1
+  return stack.pop()
 }
